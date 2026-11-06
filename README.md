@@ -1,5 +1,7 @@
 # VinylM5
 
+*English version below / 英語版は下部にあります → [English](#english)*
+
 ![VinylM5](vin.gif)
 
 M5Stack StopWatch用のレコード風MP3プレイヤーです。  
@@ -7,7 +9,8 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 
 ## インストール
 
-M5Burner シェアコード：`rg69duyAcUQoohOl`
+M5Burner シェアコード：`rg69duyAcUQoohOl`  
+WebBurner：対応申請中
 
 ## 操作方法
 
@@ -34,7 +37,8 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 
 ### Installation
 
-**M5Burner share code:** `rg69duyAcUQoohOl`
+**M5Burner share code:** `rg69duyAcUQoohOl`  
+**WebBurner:** Support application pending
 
 ### Controls
 
