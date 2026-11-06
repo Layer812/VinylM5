@@ -55,6 +55,9 @@ int main(){
  musicflash::FileSource f;assert(f.open("/track.mp3"));
  char b[40]={};assert(f.read(b,6)==6 && !strcmp(b,"HELLO!"));f.close();
  assert(musicflash::nextTrackIndex()==1);
+ assert(musicflash::selectByIndex(0,1));
+ assert(musicflash::nextTrackIndex()==0); // album playlist wraps to first track
+ assert(musicflash::selectByIndex(0,0));
  assert(musicflash::selectByIndex(1,0));
  assert(!strcmp(musicflash::folderName(),"音楽") && musicflash::trackCount()==1);
  assert(f.open("/song.mp3"));memset(b,0,sizeof(b));assert(f.read(b,12)==12&&!strcmp(b,"SOUND_SOUND!"));f.close();

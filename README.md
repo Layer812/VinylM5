@@ -12,9 +12,13 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 M5Burner シェアコード：`JtPeW54ggAbcMwZR`  
 WebBurner：対応申請中
 
+※上記M5BurnerシェアコードはR10版です。R11開発版はソースからビルドしてください。
+
 収録サンプル曲：**Neon Spinback**（作曲：Layer8）
 
 ## 操作方法
+
+**自動ループ（R11開発版）**：1曲ならその曲を連続再生し、複数曲なら現在のフォルダを順番に再生して先頭へ戻ります。
 
 | 操作 | 動作 |
 | --- | --- |
@@ -42,9 +46,13 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 **M5Burner share code:** `JtPeW54ggAbcMwZR`  
 **WebBurner:** Support application pending
 
+*The M5Burner share code still installs R10. Build R11 from source to test the loop update.*
+
 Included sample track: **Neon Spinback** (composed by Layer8).
 
 ### Controls
+
+**Automatic loop (R11 development build):** Repeat the current track when there is one MP3; otherwise play every MP3 in the current folder and wrap to the first.
 
 | Control | Action |
 | --- | --- |

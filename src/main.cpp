@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Layer812
 
-// StopWatchVinyl R10 — exact scratch recovery and label volume taps; artwork-first start / physical buttons / loading HUD, based on R4 boot-visible playable MP3 scratch turntable for M5Stack StopWatch.
-// Requires M5Unified/M5GFX, ESP8266Audio 1.9.7 and LittleFS /track.mp3.
-// R10 hardware-tested by project owner on M5Stack StopWatch.
+// VinylM5 R11 — automatic playlist / single-track loop, preserving R10 DJ scratching and artwork-first startup.
+// Uses M5Unified/M5GFX and ESP8266Audio; FAT16 USB music or legacy LittleFS /track.mp3.
+// R10 is the verified baseline. R11 loop playback requires hardware verification.
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <Preferences.h>
@@ -32,6 +32,7 @@
 #include "vinyl_core.hpp"
 #include "startup_gate.hpp"
 #include "label_volume.hpp"
+#include "playlist_loop.hpp"
 
 using namespace vinyl;
 namespace {
@@ -63,6 +64,7 @@ std::atomic<uint32_t> gFifoRead{0};
 std::atomic<uint16_t> gUiPhase{0};
 std::atomic<uint8_t> gMotorDuty{0};
 std::atomic<bool> gDecoderFinished{false};
+std::atomic<bool> gAutoAdvance{false};  // EOF request from audio owner, handled by UI task.
 std::atomic<bool> gAudioStarted{false};
 std::atomic<bool> gAudioError{false};
 std::atomic<bool> gRateUnsupported{false};
@@ -259,7 +261,7 @@ void artworkTask(void*) {
   gMetaRevision.fetch_add(1,std::memory_order_release);
   // Publish all artwork/metadata writes before the UI is permitted to read.
   gArtReady.store(true,std::memory_order_release);
-  Serial.printf("R8 ART: ID3=%s folderPNG=%s delay=%lu ms\n",gId3.image()?"YES":"NO",
+  Serial.printf("VinylM5 ART: ID3=%s folderPNG=%s delay=%lu ms\n",gId3.image()?"YES":"NO",
     gFolderPng?"YES":"NO",(unsigned long)gArtworkElapsedMs.load());
   vTaskDelete(nullptr);
 }
@@ -275,34 +277,59 @@ void decoderTask(void*) {
   FastMp3Source fast(*src);
   AudioGeneratorMP3 mp3;
   AudioCapture capture;
-  // Decode PCM while artwork is being prepared; the audio task gates playback
-  // on the completed, displayed label as well as the primed PCM buffer.
+  // Decode PCM while artwork loads. Playback is gated until the cover is visible.
+  // A ONE-track playlist stays in the same decoder task; reopening its MP3
+  // appends samples into the SAME FIFO / scratch ring (no reboot at repeat).
+  // In a MULTI-track playlist, the decoder ends once and the audio owner
+  // requests the next track only when the audible playhead has passed EOF.
+  const bool continuousOneTrack = playlistloop::repeatInDecoder(
+      gFatStorage ? musicflash::trackCount() : 1);
   if (!fast.open("/track.mp3") || !mp3.begin(&fast, &capture)) {
     gAudioError.store(true);
     gDemoMode.store(true, std::memory_order_release);
-    Serial.println("MP3 begin failed; fallback to built-in DEMO audio.");
+    Serial.println("VinylM5: MP3 begin failed; using DEMO audio.");
     builtInDemoTask();
     return;
   }
+  bool decodeError = false;
   for (;;) {
-    if (!mp3.isRunning() || gRateUnsupported.load(std::memory_order_acquire)) break;
-    const uint32_t queued = gFifoWrite.load(std::memory_order_acquire)
-                          - gFifoRead.load(std::memory_order_acquire);
-    if (queued >= kFifoFrames - kDecoderThrottleMargin) {
-      vTaskDelay(pdMS_TO_TICKS(1));
-      continue;
+    const uint32_t copyStart = gDecodedPcmFrames.load(std::memory_order_acquire);
+    while (mp3.isRunning() && !gRateUnsupported.load(std::memory_order_acquire)) {
+      const uint32_t queued = gFifoWrite.load(std::memory_order_acquire)
+                            - gFifoRead.load(std::memory_order_acquire);
+      if (queued >= kFifoFrames - kDecoderThrottleMargin) {
+        vTaskDelay(pdMS_TO_TICKS(1));
+        continue;
+      }
+      if (!mp3.loop()) break;
+      taskYIELD();
     }
-    if (!mp3.loop()) break;
-    taskYIELD();
+    mp3.stop();
+    fast.close();
+    const uint32_t decodedThisCopy = gDecodedPcmFrames.load(std::memory_order_acquire) - copyStart;
+    if (gRateUnsupported.load(std::memory_order_acquire) || decodedThisCopy < 4096) {
+      decodeError = true;
+      break; // Prevent a tight loop on corrupt, empty or unsupported files.
+    }
+    if (!continuousOneTrack) break;
+    // Reuse the existing decoder / FIFO without restarting the display,
+    // speaker or turntable. The next pass is already buffered ahead of EOF.
+    if (!fast.open("/track.mp3") || !mp3.begin(&fast, &capture)) {
+      decodeError = true;
+      break;
+    }
+    Serial.println("VinylM5: repeating single MP3");
   }
-  mp3.stop();
-  fast.close();
   gDecoderFinished.store(true, std::memory_order_release);
-  if (gRateUnsupported.load(std::memory_order_acquire) || gDecodedPcmFrames.load() < 4096) {
+  if (decodeError) {
     gAudioError.store(true);
-    gDemoMode.store(true, std::memory_order_release);
-    Serial.println("MP3 invalid or unsupported: fallback to built-in DEMO audio.");
-    builtInDemoTask();
+    if (gDecodedPcmFrames.load(std::memory_order_acquire) < 4096) {
+      gDemoMode.store(true, std::memory_order_release);
+      Serial.println("VinylM5: no usable MP3 PCM; using DEMO audio.");
+      builtInDemoTask();
+    } else {
+      Serial.println("VinylM5: decoder stopped; restart selection after buffered PCM drains.");
+    }
   }
   vTaskDelete(nullptr);
 }
@@ -358,13 +385,24 @@ void audioTask(void*) {
       const bool artworkOnScreen = gArtVisible.load(std::memory_order_acquire);
       if (startupgate::canStartPlayback(pcmPrimed, artworkOnScreen)) {
         gAudioStarted.store(true, std::memory_order_release);
-        Serial.printf("R10 START: art drawn, PCM primed, art load %lu ms\n",
+        Serial.printf("VinylM5 R11 START: art drawn, PCM primed, art load %lu ms\n",
                       (unsigned long)gArtworkElapsedMs.load());
       } else { vTaskDelay(pdMS_TO_TICKS(1)); continue; }
     }
     if (M5.Speaker.isPlaying(0) >= 2) {
       vTaskDelay(pdMS_TO_TICKS(1));
       continue;
+    }
+    // Never jump on decoder EOF alone: it may be seconds ahead of the
+    // audible position. Pauses and scratch gestures defer auto-advance.
+    if (gAudioStarted.load(std::memory_order_acquire) &&
+        !gAutoAdvance.load(std::memory_order_acquire) &&
+        playlistloop::shouldAdvance(gFatStorage ? musicflash::trackCount() : 1,
+           gDecoderFinished.load(std::memory_order_acquire),
+           gPaused.load(std::memory_order_acquire), gEngine->scratching(),
+           gFifoRead.load(std::memory_order_acquire) == gFifoWrite.load(std::memory_order_acquire),
+           gEngine->positionQ16(), gRing->newest())) {
+      gAutoAdvance.store(true, std::memory_order_release);
     }
     gEngine->render(buffer[blk], kAudioBlock);
     if (!M5.Speaker.playRaw(&buffer[blk][0].l, kAudioBlock * 2, kSampleRate, true, 1, 0, false)) {
@@ -500,14 +538,14 @@ void bootScreen(const char* stage, uint16_t color = 0x07E0) {
   M5.Display.setTextColor(color, TFT_BLACK);
   M5.Display.setFont(&fonts::Font4);
   M5.Display.setTextSize(2);
-  M5.Display.drawString("VINYL R10", M5.Display.width()/2, M5.Display.height()/2 - 42);
+  M5.Display.drawString("VinylM5", M5.Display.width()/2, M5.Display.height()/2 - 42);
   M5.Display.setTextSize(1);
   M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
   M5.Display.drawString(stage, M5.Display.width()/2, M5.Display.height()/2 + 24);
   M5.Display.setTextSize(1);
 }
 void failScreen(const char* message) {
-  Serial.printf("VINYL R10 ERROR: %s\n", message);
+  Serial.printf("VinylM5 R11 ERROR: %s\n", message);
   bootScreen(message, 0xF800);
 }
 void usbScreen(const char* heading,const char* sub1,const char* sub2){
@@ -539,7 +577,7 @@ void returnToPlayer() {
   }
   setUsbBoot(false);
   M5.Power.setVibration(0);
-  usbScreen("VINYL PLAYER","RETURNING","PLEASE WAIT");
+  usbScreen("VinylM5","RETURNING","PLEASE WAIT");
   delay(100);
   ESP.restart();
 }
@@ -558,7 +596,7 @@ void usbModeSetup(){
     return;
   }
   gUsbIsReady=usbmusic::begin();
-  if(gUsbIsReady) usbScreen("VINYL USB","COPY MP3 IN WINDOWS","EJECT / HOLD CENTER");
+  if(gUsbIsReady) usbScreen("VinylM5 USB","COPY MP3 IN WINDOWS","EJECT / HOLD CENTER");
   else usbScreen("USB ERROR","USB OTG NOT READY","HOLD CENTER TO EXIT");
 }
 void usbModeTick(){
@@ -600,7 +638,7 @@ void usbModeTick(){
         usbScreen("FORMATTING","ERASING MUSIC AREA","DO NOT POWER OFF");
         const bool ok=musicflash::formatFAT16();
         gUsbIsReady=ok && usbmusic::begin();
-        usbScreen(gUsbIsReady?"VINYL USB":"FORMAT ERROR",
+        usbScreen(gUsbIsReady?"VinylM5 USB":"FORMAT ERROR",
           gUsbIsReady?"COPY MP3 IN WINDOWS":"HOLD CENTER TO EXIT",
           gUsbIsReady?"EJECT / HOLD CENTER":"CHECK FLASH");
       }
@@ -622,7 +660,7 @@ void usbModeTick(){
 
 void setup() {
   Serial.begin(115200);
-  Serial.printf("VINYL R10: boot, reset reason=%d, psram=%u\n",
+  Serial.printf("VinylM5 R11: boot, reset reason=%d, psram=%u\n",
      static_cast<int>(esp_reset_reason()),
      static_cast<unsigned>(ESP.getPsramSize()));
   auto cfg = M5.config();
@@ -637,7 +675,7 @@ void setup() {
   cfg.external_rtc = false;
   cfg.internal_spk = true;
   M5.begin(cfg);
-  Serial.printf("VINYL R10: M5.begin done; board=%d, display=%dx%d, psram=%u\n",
+  Serial.printf("VinylM5 R11: M5.begin done; board=%d, display=%dx%d, psram=%u\n",
      static_cast<int>(M5.getBoard()), M5.Display.width(), M5.Display.height(),
      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
   // Avoid a second hardware panel reset on a possible power/IOE failure.
@@ -661,7 +699,7 @@ void setup() {
   }
   if(gUsbBoot){usbModeSetup();return;}
   bootScreen("LOADING...");
-  Serial.println("VINYL R10: first visible frame drawn");
+  Serial.println("VinylM5 R11: first visible frame drawn");
   gCx = w / 2; gCy = h / 2;
   gRadius = ((w < h) ? w : h) / 2 - 17;
 
@@ -687,7 +725,7 @@ void setup() {
   if (!gCenterFrame.createSprite(kComposeSize, kComposeSize)) { failScreen("COMPOSE ERROR"); return; }
   drawFixedPlatter();
   drawPlatterFrame();
-  Serial.println("VINYL R10: turntable drawn");
+  Serial.println("VinylM5 R11: turntable drawn");
   gLoadBeginMs.store(millis(),std::memory_order_release);
   const bool partitionOk=musicflash::begin();
   gFatStorage=partitionOk && musicflash::isFat16();
@@ -705,12 +743,12 @@ void setup() {
   if(fatHasMp3){
     strncpy(gTitle,musicflash::selectedTrack().filename,sizeof(gTitle)-1);
     gTitle[sizeof(gTitle)-1]=0;
-    Serial.printf("R8 CATALOG: %s, track %u/%u, FAT cached\n",musicflash::folderName(),
+    Serial.printf("VinylM5 CATALOG: %s, track %u/%u, FAT cached\n",musicflash::folderName(),
      unsigned(musicflash::trackIndex()+1),unsigned(musicflash::trackCount()));
   }else if(legacyHasMp3){strncpy(gTitle,"track.mp3",sizeof(gTitle)-1);}
   else {
     strncpy(gTitle,"DEMO TRACK",sizeof(gTitle)-1);
-    strncpy(gArtist,"VINYL R10",sizeof(gArtist)-1);
+    strncpy(gArtist,"VinylM5",sizeof(gArtist)-1);
   }
   rebuildLabel(); // Show default/filename while ID3 and APIC are loading.
   drawPlatterFrame();
@@ -738,13 +776,13 @@ void setup() {
     return;
   }
   if(hasMp3 && xTaskCreatePinnedToCore(artworkTask,"vinyl-art",6144,nullptr,1,nullptr,0)!=pdPASS){
-    Serial.println("R10 WARNING: artwork task unavailable; using default label");
+    Serial.println("VinylM5 R11 WARNING: artwork task unavailable; using default label");
     // Do not deadlock startup if artwork task allocation fails.
     gMetaRevision.fetch_add(1,std::memory_order_release);
     gArtReady.store(true,std::memory_order_release);
   }
   gReady.store(true, std::memory_order_release);
-  Serial.printf("StopWatchVinyl R10 START | %dx%d | PSRAM free=%u | LittleFS MP3=%s\n",
+  Serial.printf("VinylM5 R11 START | %dx%d | PSRAM free=%u | LittleFS MP3=%s\n",
                 w, h, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)), hasMp3 ? "YES" : "NO - DEMO");
 }
 
@@ -776,6 +814,18 @@ void loop() {
     return;
   }
   M5.update();
+  if (gAutoAdvance.exchange(false, std::memory_order_acq_rel)) {
+    if (gFatStorage) {
+      // nextTrackIndex wraps to zero in the current folder.
+      changeTrackOrFolder(false);
+    } else {
+      // Legacy LittleFS has only /track.mp3, so restart the same file.
+      M5.Power.setVibration(0);
+      bootScreen("REPEATING TRACK...");
+      delay(80);
+      ESP.restart();
+    }
+  }
   // Physical keys: KEY A (yellow / GPIO2) = folder; KEY B (blue /
   // GPIO1) = pause/play on single click and next track on double click.
   // First click acts immediately; a second click within 360ms loads next.
@@ -892,20 +942,20 @@ void loop() {
   if (gRateUnsupported.load()) {
     // Serial-only warning: the product currently accepts only native 44.1 kHz MP3.
     static bool logged = false;
-    if (!logged) { Serial.println("ERROR: MP3 sample rate must be 44100 Hz in R5"); logged = true; }
+    if (!logged) { Serial.println("VinylM5: MP3 sample rate must be 44100 Hz"); logged = true; }
   }
   static uint32_t lastReport = 0;
   if (millis() - lastReport >= 2000) {
     lastReport = millis();
     const uint32_t fifoCount = gFifoWrite.load(std::memory_order_acquire) - gFifoRead.load(std::memory_order_acquire);
-    Serial.printf("R10 mode=%s pcm=%lu fifo=%lu/16384 touchMove=%lu touchDrop=%lu touchQueueMaxUs=%lu touchGapMaxUs=%lu speakerQueueFail=%lu decodeFinished=%d mp3RateError=%d\n",
+    Serial.printf("VinylM5 R11 mode=%s pcm=%lu fifo=%lu/16384 touchMove=%lu touchDrop=%lu touchQueueMaxUs=%lu touchGapMaxUs=%lu speakerQueueFail=%lu decodeFinished=%d mp3RateError=%d\n",
                   gDemoMode.load() ? "DEMO" : "MP3", static_cast<unsigned long>(gDecodedPcmFrames.load()),
                   static_cast<unsigned long>(fifoCount), static_cast<unsigned long>(gTouchMoveCount.exchange(0)),
                   static_cast<unsigned long>(gTouchDropCount.load()), static_cast<unsigned long>(gMaxTouchQueueAgeUs.exchange(0)),
                   static_cast<unsigned long>(gTouchGapMaxUs.exchange(0)),
                   static_cast<unsigned long>(gSpeakerQueueFailures.load()), static_cast<int>(gDecoderFinished.load()),
                   static_cast<int>(gRateUnsupported.load()));
-    if (gAudioError.load()) Serial.println("R5 ERROR: MP3 decoder failed; check /track.mp3 and 44100Hz input.");
+    if (gAudioError.load()) Serial.println("VinylM5 ERROR: MP3 decoder failed; check /track.mp3 and 44100Hz input.");
   }
   delay(1);
 }
