@@ -1,9 +1,13 @@
 # VinylM5
 
 M5Stack StopWatch用のレコード風MP3プレイヤーです。  
-円形ディスプレイに回転するレコードを表示し、MP3を再生します。
+円形ディスプレイにレコード盤と曲のラベルを表示し、MP3を再生します。
 
-**現在開発・実機動作確認中です。**
+**実機動作確認済み（R10）**：MP3再生、レコード操作、USB経由の楽曲転送を確認しました。
+
+## インストール
+
+**M5Burner シェアコード：** `rg69duyAcUQoohOl`
 
 ## 操作方法
 
@@ -12,28 +16,40 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 | 右ボタン（1回） | 再生／一時停止 |
 | 右ボタン（ダブルクリック） | 次の曲 |
 | 左ボタン | 次のフォルダへ移動（ルートでは最初の子フォルダへ） |
-| レコードに指を置いて動かす | 停止・スクラッチ（正転／逆転） |
+| レコード盤を指で押さえて動かす | 停止・正転／逆転スクラッチ |
+| 中央ラベルの上側をタップ | 音量アップ |
+| 中央ラベルの下側をタップ | 音量ダウン |
+| 中央の軸部分を長押し | USBドライブモード |
 
-MP3はUSBドライブモードから転送する方式です（動作確認中）。  
-中央ラベルには曲名やジャケット画像を表示します。ID3に画像がない場合は、同じフォルダのPNG画像を使用します。
+USBドライブモードでMP3を転送できます。PCでのコピー後は、安全に取り出してから再生に戻してください。
+
+ラベルにはID3の曲名・アーティスト名・ジャケット画像を使用します。埋め込み画像がない場合は、同じフォルダで最初に見つかったPNG画像を使用します。日本語の曲名にも対応しています。
 
 ---
 
 ## English
 
 VinylM5 is a vinyl-style MP3 player for the **M5Stack StopWatch**.  
-It plays MP3 files while showing a spinning record on the round display.
+It plays MP3 files while displaying a spinning vinyl record and track label on the round screen.
 
-**Under development and hardware testing.**
+**Hardware-tested (R10):** MP3 playback, record controls, and USB music transfer have been confirmed.
 
-### Controls
+## Installation
+
+**M5Burner share code:** `rg69duyAcUQoohOl`
+
+## Controls
 
 | Control | Action |
 | --- | --- |
 | Right button (single click) | Play / pause |
 | Right button (double click) | Next track |
-| Left button | Next folder (first subfolder when at the root) |
-| Touch and move the record | Stop and scratch forward / backward |
+| Left button | Next folder (first subfolder from root) |
+| Touch and move the record | Hold and scratch forward / backward |
+| Tap upper half of center label | Volume up |
+| Tap lower half of center label | Volume down |
+| Long-press the center spindle | USB drive mode |
 
-MP3 files are transferred using USB drive mode (currently being tested).  
-The center label displays track information and artwork. If no embedded ID3 artwork is available, a PNG image in the same folder is used.
+Copy MP3 files using USB drive mode, then safely eject the drive on your PC before returning to playback.
+
+The center label displays ID3 track information and embedded cover art. When no embedded artwork is available, the first PNG image found in the same folder is used. Japanese track titles are supported.
