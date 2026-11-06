@@ -354,10 +354,12 @@ void audioTask(void*) {
   uint32_t blk = 0;
   uint32_t uiCounter = 0;
   Stereo16 incoming[256];
+  playlistloop::EofDrain eofDrain;
   while (true) {
     processTouchEvents();
     static bool wasPaused=false;
     if(gPaused.load(std::memory_order_acquire)){
+      eofDrain.reset();
       if(!wasPaused){M5.Speaker.stop(uint8_t(0));wasPaused=true;}
       gMotorDuty.store(0,std::memory_order_release);
       vTaskDelay(pdMS_TO_TICKS(2));
@@ -393,22 +395,22 @@ void audioTask(void*) {
       vTaskDelay(pdMS_TO_TICKS(1));
       continue;
     }
-    // Never jump on decoder EOF alone: it may be seconds ahead of the
-    // audible position. Pauses and scratch gestures defer auto-advance.
-    if (gAudioStarted.load(std::memory_order_acquire) &&
-        !gAutoAdvance.load(std::memory_order_acquire) &&
-        playlistloop::shouldAdvance(gFatStorage ? musicflash::trackCount() : 1,
-           gDecoderFinished.load(std::memory_order_acquire),
-           gPaused.load(std::memory_order_acquire), gEngine->scratching(),
-           gFifoRead.load(std::memory_order_acquire) == gFifoWrite.load(std::memory_order_acquire),
-           gEngine->positionQ16(), gRing->newest())) {
-      gAutoAdvance.store(true, std::memory_order_release);
-    }
     gEngine->render(buffer[blk], kAudioBlock);
     if (!M5.Speaker.playRaw(&buffer[blk][0].l, kAudioBlock * 2, kSampleRate, true, 1, 0, false)) {
       gSpeakerQueueFailures.fetch_add(1, std::memory_order_relaxed);
       vTaskDelay(pdMS_TO_TICKS(1));
       continue;
+    }
+    // Observe the post-render playhead *after* the speaker accepted this PCM.
+    // The existing ScratchEngine clamps at newest()-3, so a raw seek-beyond-
+    // EOF test would never fire. Pauses and scratches reset the drain counter.
+    if (!gAutoAdvance.load(std::memory_order_acquire) &&
+        eofDrain.onAudioQueued(gFatStorage ? musicflash::trackCount() : 1,
+          gDecoderFinished.load(std::memory_order_acquire),
+          gPaused.load(std::memory_order_acquire), gEngine->scratching(),
+          gFifoRead.load(std::memory_order_acquire) == gFifoWrite.load(std::memory_order_acquire),
+          gEngine->positionQ16(), gRing->newest(), kAudioBlock)) {
+      gAutoAdvance.store(true, std::memory_order_release);
     }
     blk = (blk + 1) % 3;
     if ((++uiCounter & 7u) == 0) {
