@@ -9,8 +9,10 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 
 ## インストール
 
-M5Burner シェアコード：`rg69duyAcUQoohOl`  
+M5Burner シェアコード：`JtPeW54ggAbcMwZR`  
 WebBurner：対応申請中
+
+収録サンプル曲：**Neon Spinback**（作曲：Layer8）
 
 ## 操作方法
 
@@ -37,8 +39,10 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 
 ### Installation
 
-**M5Burner share code:** `rg69duyAcUQoohOl`  
+**M5Burner share code:** `JtPeW54ggAbcMwZR`  
 **WebBurner:** Support application pending
+
+Included sample track: **Neon Spinback** (composed by Layer8).
 
 ### Controls
 
