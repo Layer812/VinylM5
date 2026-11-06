@@ -1,13 +1,13 @@
 # VinylM5
 
-M5Stack StopWatch用のレコード風MP3プレイヤーです。  
-円形ディスプレイにレコード盤と曲のラベルを表示し、MP3を再生します。
+![VinylM5](vin.gif)
 
-**実機動作確認済み（R10）**：MP3再生、レコード操作、USB経由の楽曲転送を確認しました。
+M5Stack StopWatch用のレコード風MP3プレイヤーです。  
+円形ディスプレイに回転するレコードを表示し、MP3を再生します。
 
 ## インストール
 
-**M5Burner シェアコード：** `rg69duyAcUQoohOl`
+M5Burner シェアコード：`rg69duyAcUQoohOl`
 
 ## 操作方法
 
@@ -32,13 +32,11 @@ USBドライブモードでMP3を転送できます。PCでのコピー後は、
 VinylM5 is a vinyl-style MP3 player for the **M5Stack StopWatch**.  
 It plays MP3 files while displaying a spinning vinyl record and track label on the round screen.
 
-**Hardware-tested (R10):** MP3 playback, record controls, and USB music transfer have been confirmed.
-
-## Installation
+### Installation
 
 **M5Burner share code:** `rg69duyAcUQoohOl`
 
-## Controls
+### Controls
 
 | Control | Action |
 | --- | --- |
@@ -53,3 +51,11 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 Copy MP3 files using USB drive mode, then safely eject the drive on your PC before returning to playback.
 
 The center label displays ID3 track information and embedded cover art. When no embedded artwork is available, the first PNG image found in the same folder is used. Japanese track titles are supported.
+
+---
+
+## ライセンス / License
+
+ソースコードは **[GPL-3.0-or-later](LICENSE)** で公開しています。外部ライブラリのライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。カバー画像 `vin.gif` はソースコードのライセンス対象外です。
+
+The source code is licensed under **[GPL-3.0-or-later](LICENSE)**. See [third-party notices](THIRD_PARTY_LICENSES.md) for library licenses. Cover artwork `vin.gif` is not covered by the source-code license.

@@ -1,0 +1,12 @@
+# PlatformIO / generated build artifacts
+.pio/
+build/
+*.o
+*.obj
+*.elf
+*.bin
+*.map
+*.exe
+__pycache__/
+.DS_Store
+Thumbs.db
