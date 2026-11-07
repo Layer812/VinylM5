@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Layer812
 
-// VinylM5 R11 — automatic playlist / single-track loop, preserving R10 DJ scratching and artwork-first startup.
+// VinylM5 R12 — automatic playlist / single-track loop, preserving R10 DJ scratching and artwork-first startup.
 // Uses M5Unified/M5GFX and ESP8266Audio; FAT16 USB music or legacy LittleFS /track.mp3.
-// R10 is the verified baseline. R11 loop playback requires hardware verification.
+// R11 is the verified looping baseline. R12 migrates only display libraries.
+// Keep the single M5.begin(cfg) startup path and existing board fallback.
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <Preferences.h>
@@ -387,7 +388,7 @@ void audioTask(void*) {
       const bool artworkOnScreen = gArtVisible.load(std::memory_order_acquire);
       if (startupgate::canStartPlayback(pcmPrimed, artworkOnScreen)) {
         gAudioStarted.store(true, std::memory_order_release);
-        Serial.printf("VinylM5 R11 START: art drawn, PCM primed, art load %lu ms\n",
+        Serial.printf("VinylM5 R12 START: art drawn, PCM primed, art load %lu ms\n",
                       (unsigned long)gArtworkElapsedMs.load());
       } else { vTaskDelay(pdMS_TO_TICKS(1)); continue; }
     }
@@ -529,6 +530,10 @@ void drawPlatterFrame() {
     gCenterFrame.drawString("PAUSED",kComposeCenter,kComposeCenter+23);
   }
   gCenterFrame.pushSprite(gCx-kComposeCenter,gCy-kComposeCenter);
+  // M5GFX 0.3.0 may DMA PSRAM-backed sprites asynchronously. Complete
+  // transfer on the DESTINATION before this canvas is filled again.
+  // No second AMOLED init, power toggle, or framebuffer relocation.
+  M5.Display.waitDMA();
 }
 
 // Called after M5.begin(), BEFORE PSRAM allocation and LittleFS access.
@@ -547,7 +552,7 @@ void bootScreen(const char* stage, uint16_t color = 0x07E0) {
   M5.Display.setTextSize(1);
 }
 void failScreen(const char* message) {
-  Serial.printf("VinylM5 R11 ERROR: %s\n", message);
+  Serial.printf("VinylM5 R12 ERROR: %s\n", message);
   bootScreen(message, 0xF800);
 }
 void usbScreen(const char* heading,const char* sub1,const char* sub2){
@@ -662,7 +667,7 @@ void usbModeTick(){
 
 void setup() {
   Serial.begin(115200);
-  Serial.printf("VinylM5 R11: boot, reset reason=%d, psram=%u\n",
+  Serial.printf("VinylM5 R12: boot, reset reason=%d, psram=%u\n",
      static_cast<int>(esp_reset_reason()),
      static_cast<unsigned>(ESP.getPsramSize()));
   auto cfg = M5.config();
@@ -677,11 +682,12 @@ void setup() {
   cfg.external_rtc = false;
   cfg.internal_spk = true;
   M5.begin(cfg);
-  Serial.printf("VinylM5 R11: M5.begin done; board=%d, display=%dx%d, psram=%u\n",
+  Serial.printf("VinylM5 R12: M5.begin done; board=%d, display=%dx%d, psram=%u\n",
      static_cast<int>(M5.getBoard()), M5.Display.width(), M5.Display.height(),
      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
   // Avoid a second hardware panel reset on a possible power/IOE failure.
   // M5.begin() is the one supported board-specific initialization path.
+  // In M5GFX 0.3.0, rotation 0 is upright on StopWatch; preserve 0.
   M5.Display.setRotation(0);
   M5.Display.setBrightness(180);
   const int w = M5.Display.width();
@@ -701,7 +707,7 @@ void setup() {
   }
   if(gUsbBoot){usbModeSetup();return;}
   bootScreen("LOADING...");
-  Serial.println("VinylM5 R11: first visible frame drawn");
+  Serial.println("VinylM5 R12: first visible frame drawn");
   gCx = w / 2; gCy = h / 2;
   gRadius = ((w < h) ? w : h) / 2 - 17;
 
@@ -727,7 +733,7 @@ void setup() {
   if (!gCenterFrame.createSprite(kComposeSize, kComposeSize)) { failScreen("COMPOSE ERROR"); return; }
   drawFixedPlatter();
   drawPlatterFrame();
-  Serial.println("VinylM5 R11: turntable drawn");
+  Serial.println("VinylM5 R12: turntable drawn");
   gLoadBeginMs.store(millis(),std::memory_order_release);
   const bool partitionOk=musicflash::begin();
   gFatStorage=partitionOk && musicflash::isFat16();
@@ -778,13 +784,13 @@ void setup() {
     return;
   }
   if(hasMp3 && xTaskCreatePinnedToCore(artworkTask,"vinyl-art",6144,nullptr,1,nullptr,0)!=pdPASS){
-    Serial.println("VinylM5 R11 WARNING: artwork task unavailable; using default label");
+    Serial.println("VinylM5 R12 WARNING: artwork task unavailable; using default label");
     // Do not deadlock startup if artwork task allocation fails.
     gMetaRevision.fetch_add(1,std::memory_order_release);
     gArtReady.store(true,std::memory_order_release);
   }
   gReady.store(true, std::memory_order_release);
-  Serial.printf("VinylM5 R11 START | %dx%d | PSRAM free=%u | LittleFS MP3=%s\n",
+  Serial.printf("VinylM5 R12 START | %dx%d | PSRAM free=%u | LittleFS MP3=%s\n",
                 w, h, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)), hasMp3 ? "YES" : "NO - DEMO");
 }
 
@@ -950,7 +956,7 @@ void loop() {
   if (millis() - lastReport >= 2000) {
     lastReport = millis();
     const uint32_t fifoCount = gFifoWrite.load(std::memory_order_acquire) - gFifoRead.load(std::memory_order_acquire);
-    Serial.printf("VinylM5 R11 mode=%s pcm=%lu fifo=%lu/16384 touchMove=%lu touchDrop=%lu touchQueueMaxUs=%lu touchGapMaxUs=%lu speakerQueueFail=%lu decodeFinished=%d mp3RateError=%d\n",
+    Serial.printf("VinylM5 R12 mode=%s pcm=%lu fifo=%lu/16384 touchMove=%lu touchDrop=%lu touchQueueMaxUs=%lu touchGapMaxUs=%lu speakerQueueFail=%lu decodeFinished=%d mp3RateError=%d\n",
                   gDemoMode.load() ? "DEMO" : "MP3", static_cast<unsigned long>(gDecodedPcmFrames.load()),
                   static_cast<unsigned long>(fifoCount), static_cast<unsigned long>(gTouchMoveCount.exchange(0)),
                   static_cast<unsigned long>(gTouchDropCount.load()), static_cast<unsigned long>(gMaxTouchQueueAgeUs.exchange(0)),
