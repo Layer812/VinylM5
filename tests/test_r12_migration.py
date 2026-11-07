@@ -10,7 +10,7 @@ assert cpp.count('M5.begin(cfg);') == 1
 assert cpp.count('gCenterFrame.pushSprite(') == 1
 assert cpp.index('gCenterFrame.pushSprite(') < cpp.index('M5.Display.waitDMA();')
 assert 'M5.Display.setRotation(0);' in cpp
-assert 'COM16' in cmd and 'write_flash 0x10000' in cmd
+assert 'COM16' in cmd and 'flash_verified.py' in cmd and 'write_flash 0x10000' in cmd
 assert 'erase_flash' not in cmd
 assert 'M5.Power.setVibration' in cpp and 'gAutoAdvance.exchange' in cpp
 print('PASS VinylM5 R12: matched libraries, safe DMA, single init, COM16 app-only, R11 loop')

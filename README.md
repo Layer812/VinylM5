@@ -1,6 +1,6 @@
 # VinylM5
 
-> R12開発版：M5Unified/M5GFX 0.3.0更新。書き込みの既定ポートはCOM16。詳細は [R12_RELEASE_NOTES_JA.md](R12_RELEASE_NOTES_JA.md)。
+> R12開発版：StopWatch規約R1対応。COM16でパーティション/otadata照合後、条件が一致する場合のみAPP書き込み。[詳細](R12_RELEASE_NOTES_JA.md)。
 
 *English version below / 英語版は下部にあります → [English](#english)*
 
