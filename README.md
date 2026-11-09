@@ -10,7 +10,7 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 ## インストール
 
 M5Burner シェアコード：`DBSIOlaGwQOEO6Hm`  
-WebBurner：対応申請中
+WebBurner：https://burner.m5stack.com/PU4PNM
 
 収録サンプル曲：**Neon Spinback**（Original）
 
@@ -40,7 +40,7 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 ### Installation
 
 **M5Burner share code:** `DBSIOlaGwQOEO6Hm`  
-**WebBurner:** Support application pending
+**WebBurner:** https://burner.m5stack.com/PU4PNM
 
 Included sample track: **Neon Spinback** (Original).
 
