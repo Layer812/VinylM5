@@ -7,6 +7,8 @@
 M5Stack StopWatch用のレコード風MP3プレイヤーです。  
 円形ディスプレイに回転するレコードを表示し、MP3を再生します。
 
+**動作風景：** [Xで実機の動作動画を見る](https://x.com/layer812/status/2118882192084607121)
+
 ## インストール
 
 M5Burner シェアコード：`OPziEKkRxviwEEDH`  
@@ -65,6 +67,8 @@ microSDは**FAT32**で使用してください。NTFS・exFATには対応して�
 
 VinylM5 is a vinyl-style MP3 player for the **M5Stack StopWatch**.  
 It plays MP3 files while displaying a spinning vinyl record and track label on the round screen.
+
+**Demo video:** [Watch VinylM5 running on real hardware on X](https://x.com/layer812/status/2118882192084607121)
 
 ### Installation
 
