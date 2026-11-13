@@ -16,6 +16,10 @@ WebBurner：**更新申請中**（[従来の公開版](https://burner.m5stack.co
 
 収録サンプル曲：**Neon Spinback**（Original）
 
+## microSD読み込みサンプル
+
+StopWatch背面のmicroSD SPI初期化・読み込み処理を、[独立したサンプルコード](examples/stopwatch-microsd-spi/README.md)として公開しています。2種類の配線、背面MUX切替、FAT32マウント、MP3/FLACファイル読み込みの例です。
+
 ## 操作方法
 
 | 操作 | 動作 |
@@ -76,6 +80,10 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 **WebBurner:** **Updated release pending review** ([previous published version](https://burner.m5stack.com/PU4PNM))
 
 Included sample track: **Neon Spinback** (Original).
+
+### microSD SPI code example
+
+A [standalone, read-only microSD SPI example](examples/stopwatch-microsd-spi/README.md) shows rear EXT MUX selection, two pin layouts, FAT32 mounting and reading an MP3/FLAC file.
 
 ### Controls
 
