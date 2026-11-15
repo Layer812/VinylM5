@@ -11,8 +11,9 @@ M5Stack StopWatch用のレコード風MP3プレイヤーです。
 
 ## インストール
 
-M5Burner シェアコード：`OPziEKkRxviwEEDH`  
-WebBurner：**更新申請中**（[従来の公開版](https://burner.m5stack.com/PU4PNM)）
+M5Burner シェアコード：`F6iadcUkHAM3gnQv`  
+WebBurner：[最新版をブラウザから書き込む](https://burner.m5stack.com/LRW3MJ)  
+**2026年11月15日：StopWatch実機でmicroSD再生動作を確認済み。**
 
 収録サンプル曲：**Neon Spinback**（Original）
 
@@ -41,8 +42,7 @@ USBドライブモードでMP3を転送できます。PCでのコピー後は、
 
 StopWatch背面の6ピンEXT端子に、**3.3V動作**のmicroSD SPIカードリーダーを接続します。
 
-<img src="docs/images/microsd-mounted.jpg" alt="StopWatch背面にmicroSDカードリーダーを装着した写真" width="380">
-<img src="docs/images/microsd-module.jpg" alt="microSDカードリーダーのピン側面写真" width="380">
+<img src="docs/images/microsd-stopwatch.webp" alt="VinylM5実機：M5Stack StopWatch背面に装着されたmicroSDモジュール（提供写真）" width="460">
 
 **電源を切ってから接続してください。** 電源端子の`3V3_L2`と`GND`の位置が一致するカードリーダーのみ使用できます。5Vモジュールや電源配列が異なる基板は直挿ししないでください。
 
@@ -86,8 +86,9 @@ It plays MP3 files while displaying a spinning vinyl record and track label on t
 
 ### Installation
 
-**M5Burner share code:** `OPziEKkRxviwEEDH`  
-**WebBurner:** **Updated release pending review** ([previous published version](https://burner.m5stack.com/PU4PNM))
+**M5Burner share code:** `F6iadcUkHAM3gnQv`  
+**WebBurner:** [Install the latest release](https://burner.m5stack.com/LRW3MJ)  
+**Verified on a physical StopWatch with microSD playback (November 15, 2026).**
 
 Included sample track: **Neon Spinback** (Original).
 

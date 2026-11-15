@@ -32,7 +32,7 @@ StopWatch背面6ピンEXT（3.3V側からGND側への順序）。電源を切っ
 - **B（互換）**：`3V3 / CS / CLK / MOSI / MISO / GND`
 - **A（互換）**：`3V3 / CS / MOSI / CLK / MISO / GND`
 
-写真：[装着時](../../docs/images/microsd-mounted.jpg) / [モジュール側面](../../docs/images/microsd-module.jpg)
+実機写真（今回提供された1枚のみ）：[StopWatch背面とmicroSDモジュール](../../docs/images/microsd-stopwatch.webp)
 
 ## Safety / 注意
 

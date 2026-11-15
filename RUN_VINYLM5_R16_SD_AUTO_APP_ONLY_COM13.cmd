@@ -24,7 +24,7 @@ if not exist "%PY%" (echo ERROR: PlatformIO Python missing & pause & exit /b 1)
 
 pushd "%ROOT%" || (echo ERROR: folder missing & pause & exit /b 1)
 
-echo VinylM5 R16 SD AUTO - A/B/Conta reader detection, R16 audio retained
+echo VinylM5 SD: C official default; blue boot B/A compatibility, yellow boot C restore
 
 echo COM=%PORT%  - APP ONLY, no partition changes, no storage erase, no backups.
 
