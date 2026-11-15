@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <cstdint>
+#include "sd_spi_autodetect.hpp"
 namespace sdmusic {
 // Direct-plug StopWatch 6-pin EXT connector, viewed by matching silk labels.
 // EXT: 3V3_L2 / MUX_IO_1 (GPIO43) / MUX_IO_2 (GPIO44) / G9 / G0 / GND
 // GPIO0 is a BOOT strap. The auto detector uses it only after M5.begin().
 // Reader power pins must match physically (3V3/GND); never probe supply pins.
-enum class PinProfile : uint8_t { Standard=0, SwappedData=1, Conta10770=2 };
+// C official by default; B/A requires persistent opt-in.
 
 // UTF-8: Japanese names can take 3 bytes/character. Allocate in PSRAM.
 // FAT LFN and framework may impose their own limits; never truncate a path.
@@ -20,7 +21,7 @@ uint16_t randomTrackIndex(uint32_t seed);
 const char* folderPath();
 const char* folderPathAt(uint8_t index);
 bool catalogBuilding();
-bool begin(); // SD card access only after M5.begin; never reconfigure display/PMIC
+bool begin(sdautodetect::Mode mode); // Exclusive C or B/A mode.
 void printStatus(); // Persisted boot scan status; no hardware access
 bool mounted();
 bool selectByIndex(uint8_t folder, uint16_t track);

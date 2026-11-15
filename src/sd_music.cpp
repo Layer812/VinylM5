@@ -109,8 +109,7 @@ static bool selectRearGpioRoute(){
 }
 
 
-// Use the SD library's tested SPI initialization on the two supported
-// board pinouts (C then A). No arbitrary GPIO combinations are probed.
+// Probe only the selected C or B/A group; never cross-probe.
 // Between failed trials, CS is HIGH, the SPI peripheral is shut down
 // and GPIO0/9/44 are released. Power and ground must match physically.
 class AutoMountBus {
@@ -393,7 +392,7 @@ void scanDirectoryCatalog(uint8_t index) {
  folders[index].scanned=true;
 }
 }
-bool begin(){
+bool begin(sdautodetect::Mode mode){
  if(ready)return true;
  if(!sdMutex)sdMutex=xSemaphoreCreateMutex();
  if(!sdMutex){Serial.println("VinylM5 SD: mutex allocation failed");return false;}
@@ -405,6 +404,7 @@ bool begin(){
  lastTriedHz=workingHz=0;
  cardBytes=0;
  detectedProfile="NONE";
+ Serial.printf("VinylM5 SD: selected group=%s (exclusive)\n", mode==sdautodetect::Mode::OfficialC?"C/OFFICIAL":"B/A/COMPAT");
  // 3V3_L2 is powered in normal L2/L3A states (M5PM1 management).
  // Do not manually toggle the power rail, OLED or PMIC.
  const bool muxReady=selectRearGpioRoute();
@@ -413,14 +413,14 @@ bool begin(){
    Serial.println("VinylM5 SD: MUX control unverified; SD access canceled");
    return false;
  }
- // Try the C/A SPI layouts using the FAT32 mount path that
+ // Try ONLY the selected C or B/A SPI group using the FAT32 mount path that
  // already succeeded on StopWatch. The weak open-drain CMD0-only preflight
  // could fail before any attempt reached the working SD driver.
  AutoMountBus bus;
  uint32_t mountedHz=0;
- const sdautodetect::Pins* detected=sdautodetect::mount(bus,mountedHz);
+ const sdautodetect::Pins* detected=sdautodetect::mount(bus,mountedHz,mode);
  if(!detected){
-   Serial.println("VinylM5 SD AUTO: C/A mount failed; check FAT32, pins, card contact, and 3V3/GND");
+   Serial.println("VinylM5 SD AUTO: selected group mount failed (other group not probed); check FAT32, pins, card contact, and 3V3/GND");
    return false;
  }
  detectedProfile=detected->label;

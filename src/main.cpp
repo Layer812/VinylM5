@@ -737,7 +737,29 @@ void setup() {
     prefs.end();
   }
   if(gUsbBoot){usbModeSetup();return;}
-  bootScreen("LOADING...");
+  // Boot-held BLUE/right BtnB selects B/A compatibility, remembered in NVS.
+  // Boot-held YELLOW/left BtnA restores official C. No direct button GPIO writes.
+  M5.update();
+  delay(45);
+  M5.update();
+  const bool blueAtBoot=M5.BtnB.isPressed();
+  const bool yellowAtBoot=M5.BtnA.isPressed();
+  sdautodetect::Mode sdMode=sdautodetect::Mode::OfficialC;
+  Preferences sdHardware;
+  if(sdHardware.begin("vinyl_sd_hw",false)) {
+    const uint8_t saved=sdHardware.getUChar("mode",0);
+    sdMode=sdautodetect::selectMode(sdautodetect::decodeMode(saved),blueAtBoot,yellowAtBoot);
+    if(static_cast<uint8_t>(sdMode)!=saved && sdHardware.putUChar("mode",static_cast<uint8_t>(sdMode))!=1)
+      Serial.println("VinylM5 SD: WARNING mode save failed");
+    sdHardware.end();
+  } else {
+    sdMode=sdautodetect::selectMode(sdautodetect::Mode::OfficialC,blueAtBoot,yellowAtBoot);
+    Serial.println("VinylM5 SD: WARNING NVS unavailable; mode not persistent");
+  }
+  Serial.printf("VinylM5 SD: MODE=%s blue=%u yellow=%u\n",
+    sdMode==sdautodetect::Mode::OfficialC?"C/OFFICIAL":"B/A/COMPAT",
+    unsigned(blueAtBoot),unsigned(yellowAtBoot));
+  bootScreen(sdMode==sdautodetect::Mode::OfficialC?"SD: TYPE C":"SD: TYPE B/A");
   Serial.println("VinylM5 R11: first visible frame drawn");
   gCx = w / 2; gCy = h / 2;
   gRadius = ((w < h) ? w : h) / 2 - 17;
@@ -767,7 +789,7 @@ void setup() {
   Serial.println("VinylM5 R11: turntable drawn");
   // R11 display path above is unchanged. Only now may we touch the SD SPI bus.
   // A missing card MUST have no effect on the existing internal Flash player.
-  bool sdMounted=sdmusic::begin();
+  bool sdMounted=sdmusic::begin(sdMode);
   Preferences sdSelection;
   uint8_t sdFolder=0; uint16_t sdTrack=0;
   if(sdSelection.begin("vinyl_sd",true)){
