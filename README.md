@@ -18,7 +18,7 @@ WebBurner：**更新申請中**（[従来の公開版](https://burner.m5stack.co
 
 ## microSD読み込みサンプル
 
-StopWatch背面のmicroSD SPI初期化・読み込み処理を、[独立したサンプルコード](examples/stopwatch-microsd-spi/README.md)として公開しています。2種類の配線、背面MUX切替、FAT32マウント、MP3/FLACファイル読み込みの例です。
+StopWatch背面のSPI接続例は[サンプルコード](examples/stopwatch-microsd-spi/README.md)で確認できます。VinylM5 R16本体はA・B・Conta 10770の**3種類の配列を自動判別**し、設定画面での選択は不要です。
 
 ## 操作方法
 
@@ -39,38 +39,41 @@ USBドライブモードでMP3を転送できます。PCでのコピー後は、
 
 ## microSDカードの接続
 
-StopWatch背面の**6ピンEXT端子**に、3.3V動作のmicroSD SPIカードリーダーを接続します。以下は実機で使用している接続例です。
+StopWatch背面の6ピンEXT端子に、**3.3V動作**のmicroSD SPIカードリーダーを接続します。
 
-<img src="docs/images/microsd-mounted.jpg" alt="StopWatch背面の6ピン端子にmicroSDモジュールを取り付けた写真" width="380">
+<img src="docs/images/microsd-mounted.jpg" alt="StopWatch背面にmicroSDカードリーダーを装着した写真" width="380">
+<img src="docs/images/microsd-module.jpg" alt="microSDカードリーダーのピン側面写真" width="380">
 
-<img src="docs/images/microsd-module.jpg" alt="microSD SPIモジュールの側面と6本のピンの写真" width="380">
+**電源を切ってから接続してください。** 電源端子の`3V3_L2`と`GND`の位置が一致するカードリーダーのみ使用できます。5Vモジュールや電源配列が異なる基板は直挿ししないでください。
 
-**電源OFFで着脱し、必ず基板のピン印字を確認してください。** StopWatch側の `3V3_L2` とカードリーダーの `3V3`、双方の `GND` が一致する必要があります。写真と外観が似ていても、電源ピンの位置が違うモジュールは直挿ししないでください。5V接続にも対応しません。
+### 自動判別に対応する3種類のピン配列
 
-VinylM5 R16は、信号線の並びが異なる次の**2種類**を自動的に試行します（3.3V→GND方向）。
+いずれも3.3V側からGND側への並びです。
 
-| StopWatch側の端子 | GPIO | タイプAのmicroSD印字 | タイプBのmicroSD印字 |
-| --- | --- | --- | --- |
-| `3V3_L2` | 電源 | `3V3` | `3V3` |
-| `MUX_IO_1` | GPIO43 | `CS` | `CS` |
-| `MUX_IO_2` | GPIO44 | `MOSI` | `CLK` |
-| `G9` | GPIO9 | `CLK` | `MOSI` |
-| `G0` | GPIO0 | `MISO` | `MISO` |
-| `GND` | GND | `GND` | `GND` |
+| 種類 | microSDリーダーのピン配列 |
+| --- | --- |
+| A | `3V3 / CS / MOSI / CLK / MISO / GND` |
+| B | `3V3 / CS / CLK / MOSI / MISO / GND` |
+| C | `3V3 / SS / MOSI / MISO / SCK / GND` |
 
-- **タイプA：** `3V3 / CS / MOSI / CLK / MISO / GND`
-- **タイプB：** `3V3 / CS / CLK / MOSI / MISO / GND`
+**C配列の製品例：** [スイッチサイエンス Conta microSDカードソケット拡張用モジュール（製品10770）](https://www.switch-science.com/products/10770)
 
-**重要：** GPIO0はBOOT兼用です。microSD側のMISOが起動時にGPIO0をLOWへ固定するモジュールは使用しないでください。電源/GNDの誤配線はソフトウェアで修正できません。
+StopWatch側の信号は、CS/SS=GPIO43、GPIO44・GPIO9・GPIO0が残るMOSI・SCK・MISOに対応します。起動時にSDカードの応答を確認してから適切な配列でSPI通信を開始するため、ボタンや画面での切替操作は不要です。
 
-### Conta microSD（スイッチサイエンス製品10770）
+GPIO0は起動ストラップ端子です。起動時に外部回路からLOWへ固定しないモジュールを使用してください。自動判別は弱駆動の低速信号で行いますが、任意の未対応モジュールに対する電気的な安全性を保証するものではありません。
 
-[Conta™ microSDカードソケット拡張用モジュール（ピンヘッダなし）](https://www.switch-science.com/products/10770)用には、[専用のVinylM5ソース・書き込み手順](variants/conta10770/README.md)を用意しています。
+microSDは**FAT32**を使用します。NTFS・exFATは読み込めません。多数のフォルダがある場合でも、前回選択したフォルダを優先して再生開始し、残りはバックグラウンドで読み込みます。
 
-この基板は `3V3 / SS / MOSI / MISO / SCK / GND` の並びです。StopWatchのGPIO43=SS、GPIO44=MOSI、GPIO9=MISO、GPIO0=SCKに接続します。**従来の2種類とはMISO/SCKの位置が異なるため、専用ビルドを使ってください。** 自動切替の対象には含めていません。GPIO0は起動後にSCKへ切り替えます。3.3VとGNDを必ず確認してください。
+### ソースからインストール（Windows / PlatformIO）
 
+統合版のソースを取得し、シリアルモニターを閉じてから次のAPP-ONLYスクリプトを実行してください。
 
-microSDは**FAT32**で使用してください。NTFS・exFATには対応していません。実機では32GB FAT32カードでMP3/FLAC再生を確認しています。曲が多い場合も、R16は前回のフォルダを優先して再生開始し、残りのフォルダをバックグラウンドで読み込みます。microSD内の音楽ファイルを削除・変更・フォーマットすることはありません。
+```bat
+call "RUN_VINYLM5_R16_SD_AUTO_APP_ONLY_COM13.cmd"
+```
+
+別のCOMポートを使う場合は末尾に `COM14` などを指定できます。起動APP領域を確認してからアプリケーションのみ書き込み、ブートローダー、パーティション表、音楽データは消去しません。
+
 
 ---
 
@@ -90,7 +93,7 @@ Included sample track: **Neon Spinback** (Original).
 
 ### microSD SPI code example
 
-A [standalone, read-only microSD SPI example](examples/stopwatch-microsd-spi/README.md) shows rear EXT MUX selection, two pin layouts, FAT32 mounting and reading an MP3/FLAC file.
+A [standalone SPI reader example](examples/stopwatch-microsd-spi/README.md) documents the StopWatch's rear connector. VinylM5 R16 itself automatically identifies all three supported reader layouts, including Conta 10770.
 
 ### Controls
 
@@ -111,32 +114,24 @@ The center label displays ID3 track information and embedded cover art. When no 
 
 ### microSD connection
 
-Attach a **3.3V microSD SPI reader** to the StopWatch's rear **6-pin EXT connector**. The two photos above show an actual module mounted on the watch and the module viewed from the side.
+Connect a **3.3V microSD SPI reader** to the StopWatch's rear 6-pin EXT connector while the power is off. Match the physical `3V3_L2` and `GND` positions. Do not directly attach readers with different power pins or a 5V supply.
 
-**Power OFF before inserting or removing the reader.** Always verify the printed pin labels: the reader's `3V3` must match StopWatch `3V3_L2`, and `GND` must match `GND`. Do not direct-plug readers with different power-pin positions or 5V wiring.
+VinylM5 supports and **automatically detects** these three layouts (from 3.3V to GND):
 
-VinylM5 R16 supports **two specific signal orders**, from 3.3V toward GND:
+| Type | Reader pins |
+| --- | --- |
+| A | `3V3 / CS / MOSI / CLK / MISO / GND` |
+| B | `3V3 / CS / CLK / MOSI / MISO / GND` |
+| C | `3V3 / SS / MOSI / MISO / SCK / GND` |
 
-| StopWatch pin | GPIO | Reader type A | Reader type B |
-| --- | --- | --- | --- |
-| `3V3_L2` | Power | `3V3` | `3V3` |
-| `MUX_IO_1` | GPIO43 | `CS` | `CS` |
-| `MUX_IO_2` | GPIO44 | `MOSI` | `CLK` |
-| `G9` | GPIO9 | `CLK` | `MOSI` |
-| `G0` | GPIO0 | `MISO` | `MISO` |
-| `GND` | Ground | `GND` | `GND` |
+The [Switch Science Conta microSD socket module, product 10770](https://www.switch-science.com/products/10770), uses Type C.
 
-- **Type A:** `3V3 / CS / MOSI / CLK / MISO / GND`
-- **Type B:** `3V3 / CS / CLK / MOSI / MISO / GND`
+The player probes card responses at low speed with weak open-drain signaling, then starts normal SPI only on the identified pins. No user selection is needed. GPIO0 is a boot-strapping pin and must not be held LOW by the reader at reset. Only the listed layouts are supported; this does not guarantee safety with arbitrary third-party hardware.
 
-GPIO0 is a boot-strapping pin; a reader that holds MISO/GPIO0 LOW during boot may prevent startup. Only these two layouts are attempted; arbitrary pin probing is not used.
+Use a **FAT32** microSD card (not NTFS or exFAT). Playback starts from the previous folder while the remaining directory catalog is loaded in the background.
 
-#### Switch Science Conta microSD (product 10770)
+For a source installation, close the serial monitor and run `RUN_VINYLM5_R16_SD_AUTO_APP_ONLY_COM13.cmd` on Windows (append a COM port name when needed). The script verifies the current boot application and writes only the APP partition.
 
-The [Conta™ microSD Card Socket Module, without pin headers](https://www.switch-science.com/products/10770) uses `3V3 / SS / MOSI / MISO / SCK / GND`. Use the [dedicated VinylM5 source and installation instructions](variants/conta10770/README.md): GPIO43=SS, GPIO44=MOSI, GPIO9=MISO, GPIO0=SCK. **Do not use the standard A/B firmware with this pinout.** GPIO0 is configured as SCK only after boot. Check 3.3V and ground before connecting.
-
-
-Use a **FAT32** microSD card (not NTFS or exFAT). MP3/FLAC playback was confirmed on a 32GB FAT32 card. R16 starts from the previous folder while indexing remaining folders in the background. The player does not format or modify files on the card.
 
 ---
 

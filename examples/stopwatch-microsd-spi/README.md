@@ -1,8 +1,10 @@
 # StopWatch microSD SPI reader example / 読み込みサンプル
 
-VinylM5 R16で実機動作したmicroSD初期化・読み込み処理を、他のStopWatchアプリでも再利用できるよう整理した**独立サンプル**です。
+VinylM5 R16のmicroSD初期化・読み込み処理を、他のStopWatchアプリでも再利用できるよう整理した**独立サンプル**です。
 
 For the different Switch Science Conta 10770 pin layout, see the [dedicated VinylM5 variant](../../variants/conta10770/README.md).
+
+The full VinylM5 R16 player automatically detects types A, B and C (Conta 10770). This small standalone reader example focuses on A/B.
 
 This **read-only standalone example** reproduces the rear EXT MUX control, two safe microSD SPI pin profiles, FAT32 mounting, and opening a music file. It is derived from the VinylM5 R16 SD implementation, for which the user confirmed music playback and faster startup on a real StopWatch.
 

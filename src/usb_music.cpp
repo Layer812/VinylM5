@@ -79,7 +79,7 @@ namespace usbmusic {
 bool begin(){
  if(!musicflash::isFat16() || !musicflash::capacityBytes())return false;
  ioMutex=xSemaphoreCreateMutex();if(!ioMutex)return false;
- disk.vendorID("M5STACK");disk.productID("VINYL USB");disk.productRevision("R6");
+ disk.vendorID("M5STACK");disk.productID("VinylM5");disk.productRevision("R11");
  disk.onRead(onRead);disk.onWrite(onWrite);disk.onStartStop(onStartStop);
  // USBMSC in Arduino-ESP32 2.0.17 has no isWritable() method.
  // Supplying an onWrite callback makes the medium writable to the host.
