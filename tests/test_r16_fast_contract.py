@@ -14,7 +14,7 @@ for name in ['src/vinyl_core.cpp','include/vinyl_core.hpp','src/music_flash.cpp'
        'src/usb_music.cpp':'5d06ff44518a20c4b35e1f205544b8436e21a9ad846b61541f47fe880c9e62a7'}[name]
     assert hashlib.sha256((p/name).read_bytes()).hexdigest()==expected,name
 assert m.count('M5.begin(cfg);')==1
-assert m.index('drawPlatterFrame();\n  Serial.println("VinylM5 R11: turntable drawn")')<m.index('sdmusic::begin()')
+assert m.index('drawPlatterFrame();\n  Serial.println("VinylM5 R11: turntable drawn")')<m.index('sdmusic::begin(sdMode)')
 assert 'LittleFS.begin(false)&&LittleFS.exists("/track.mp3")' in m
 assert 'M5.Display.waitDMA' not in m
 assert 'AudioGeneratorFLAC flac;' in m and 'LockedSdSource sdSource;' in m
@@ -28,7 +28,7 @@ assert 'Neither branch writes to microSD' in s
 assert 'SD.format' not in s and 'SD.remove' not in s
 assert 'pinMode(43, OUTPUT)' in s and '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
 assert '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
-assert 'sdautodetect::mount(bus,mountedHz)' in s
+assert 'sdautodetect::mount(bus,mountedHz,mode)' in s
 assert 'SD.begin(pins.cs, sdSPI, hz, "/sd", 5, false)' in s
 assert 'SD.end();sdSPI.end();' in s
 assert 'cfg.internal_imu = false;' in m and 'cfg.internal_rtc = false;' in m

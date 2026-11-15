@@ -5,6 +5,7 @@
 #include <M5Unified.h>
 #include <SPI.h>
 #include <SD.h>
+#include <Preferences.h>
 #include <cstdio>
 #include <cstring>
 #include <strings.h>
@@ -13,9 +14,11 @@ namespace {
 // CO5300 AMOLED uses SPI2. Keep the microSD on independent SPI3/HSPI.
 SPIClass sdSPI(HSPI);
 struct Pins { int cs, mosi, sck, miso; const char* name; };
+enum class SdMode : uint8_t { OfficialC=0, LegacyAB=1 };
 constexpr Pins kProfiles[] = {
-  {43, 44,  9, 0, "A: CS/MOSI/CLK/MISO"},
-  {43,  9, 44, 0, "B: CS/CLK/MOSI/MISO"},
+  {43,44,0,9,"C: SS/MOSI/MISO/SCK"},
+  {43,9,44,0,"B: CS/CLK/MOSI/MISO"},
+  {43,44,9,0,"A: CS/MOSI/CLK/MISO"},
 };
 constexpr uint32_t kSpeeds[] = {4000000u, 2000000u, 1000000u};
 constexpr unsigned kMaxDepth = 8;
@@ -49,16 +52,44 @@ bool selectRearGpioRoute() {
   return ok;
 }
 
-bool mountReadOnly() {
+SdMode choosePersistentMode() {
+  M5.update();
+  delay(45);
+  M5.update();
+  const bool blue=M5.BtnB.isPressed();
+  const bool yellow=M5.BtnA.isPressed();
+  uint8_t saved=0;
+  Preferences pref;
+  const bool ok=pref.begin("vinyl_sd_hw",false);
+  if(ok) saved=pref.getUChar("mode",0);
+  const SdMode mode=yellow?SdMode::OfficialC:
+      (blue?SdMode::LegacyAB:(saved==1?SdMode::LegacyAB:SdMode::OfficialC));
+  if(ok) {
+    if(saved!=static_cast<uint8_t>(mode) && pref.putUChar("mode",static_cast<uint8_t>(mode))!=1)
+      Serial.println("microSD: WARNING NVS mode save failed");
+    pref.end();
+  } else {
+    Serial.println("microSD: WARNING NVS unavailable; mode is not persistent");
+  }
+  Serial.printf("microSD: mode=%s blue=%u yellow=%u\n",
+    mode==SdMode::OfficialC?"C/OFFICIAL":"B/A/COMPAT",unsigned(blue),unsigned(yellow));
+  return mode;
+}
+
+bool mountReadOnly(SdMode mode) {
   if (!selectRearGpioRoute()) {
     Serial.println("microSD: stopping; cannot verify rear EXT MUX");
     return false;
   }
-  for (const auto& pins : kProfiles) {
-    for (const uint32_t hz : kSpeeds) {
-      // GPIO0 is a BOOT STRAP: only use it as MISO input, NEVER as output.
-      pinMode(pins.cs, OUTPUT);
+  const unsigned start=mode==SdMode::OfficialC?0u:1u;
+  const unsigned end=mode==SdMode::OfficialC?1u:3u;
+  for(unsigned i=start;i<end;++i) {
+    const auto& pins=kProfiles[i];
+    for(const uint32_t hz:kSpeeds) {
+      // C drives SCK on GPIO0 only AFTER boot; B/A keep GPIO0 as MISO input.
       digitalWrite(pins.cs, HIGH);
+      pinMode(pins.cs, OUTPUT);
+      for(int p:{0,9,44}) pinMode(p,INPUT_PULLUP);
       sdSPI.begin(pins.sck, pins.miso, pins.mosi, pins.cs);
       delay(15);
       // format_if_mount_failed=false: do NOT format SD or internal Flash.
@@ -68,8 +99,10 @@ bool mountReadOnly() {
                       static_cast<unsigned long long>(SD.cardSize()/1048576ull));
         return true;
       }
+      digitalWrite(pins.cs,HIGH);
       SD.end();
       sdSPI.end();
+      for(int p:{0,9,44}) pinMode(p,INPUT_PULLUP);
       delay(50);
     }
   }
@@ -141,7 +174,7 @@ void setup() {
     Serial.println("This example only supports M5Stack StopWatch");
     return;
   }
-  if (!mountReadOnly()) return;
+  if (!mountReadOnly(choosePersistentMode())) return;
 
   char path[512] = {};
   uint32_t visited = 0;
