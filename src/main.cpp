@@ -93,6 +93,9 @@ uint16_t activeTrackCount() {return gSdActive?sdmusic::trackCount():
 const char* activeTrackPath() {return gSdActive?sdmusic::selectedTrack().path:"/track.mp3";}
 bool activeFlac() {return gSdActive && sdmusic::selectedTrack().flac;}
 bool gUsbBoot=false;
+// Consumed boot-mode button holds must not become playback controls on release.
+bool gIgnoreBootBlueRelease=false;
+bool gIgnoreBootYellowRelease=false;
 bool gFormatArmed=false;
 bool gUsbIsReady=false;
 uint32_t gLastUsbDraw=0;
@@ -744,6 +747,8 @@ void setup() {
   M5.update();
   const bool blueAtBoot=M5.BtnB.isPressed();
   const bool yellowAtBoot=M5.BtnA.isPressed();
+  gIgnoreBootBlueRelease=blueAtBoot;
+  gIgnoreBootYellowRelease=yellowAtBoot;
   sdautodetect::Mode sdMode=sdautodetect::Mode::OfficialC;
   Preferences sdHardware;
   if(sdHardware.begin("vinyl_sd_hw",false)) {
@@ -928,10 +933,14 @@ void loop() {
     gPaused.store(!gPaused.load(std::memory_order_acquire),std::memory_order_release);
   }
   if (leftClicks.singleDue(keyNow)) changeTrackOrFolder(true);
-  if (M5.BtnB.wasReleased() && rightClicks.onRelease(keyNow)) {
+  if (gIgnoreBootBlueRelease) {
+    if (!M5.BtnB.isPressed()) gIgnoreBootBlueRelease=false;
+  } else if (M5.BtnB.wasReleased() && rightClicks.onRelease(keyNow)) {
     changeTrackOrFolder(false);       // RIGHT double: next sequential track
   }
-  if (M5.BtnA.wasReleased() && leftClicks.onRelease(keyNow)) {
+  if (gIgnoreBootYellowRelease) {
+    if (!M5.BtnA.isPressed()) gIgnoreBootYellowRelease=false;
+  } else if (M5.BtnA.wasReleased() && leftClicks.onRelease(keyNow)) {
     changeTrackOrFolder(false,true);  // LEFT double: random in same folder
   }
   static bool wasPressed = false;
