@@ -1,4 +1,8 @@
-# VinylM5 — Conta microSD (10770)
+# VinylM5 — Conta microSD (10770) [Legacy variant]
+
+**新しいメイン版VinylM5ではConta 10770（C型）が公式サポート・標準起動対象です。** この別ビルドは旧バージョンの記録用です。メイン版では青ボタン起動でB/A互換グループを記憶し、黄色ボタン起動でC型へ戻ります。C型利用のために別ビルドを書く必要はありません。
+
+**Main VinylM5 now officially supports Type C by default.** This standalone variant is kept for legacy reference. Blue-boot selects persistent B/A compatibility; yellow-boot returns to official C.
 
 VinylM5のM5Stack StopWatch向けmicroSD対応版です。スイッチサイエンス製のConta microSDカードソケット拡張用モジュールに合わせたSPI端子配置を使用します。
 
