@@ -1,68 +1,43 @@
 #include "sd_spi_autodetect.hpp"
 #include <cassert>
-#include <cstdint>
-#include <deque>
-#include <vector>
 #include <cstdio>
+#include <vector>
+#include <utility>
 
-struct MockSpi {
+struct MockMount {
   const sdautodetect::Pins* actual;
-  int type; // 0 = SDHC, 1 = SDSC v1, 2 = wrong echo
-  bool selected=false;
-  bool connected=false;
-  bool prepared=false;
-  std::vector<uint8_t> command;
-  std::deque<uint8_t> response;
-  int attempts=0;
-  int sends=0;
-  MockSpi(const sdautodetect::Pins* p,int t=0):actual(p),type(t){}
-  bool prepare(const sdautodetect::Pins& p){
-    prepared=true; selected=false; command.clear();response.clear();++attempts;
-    connected=actual && p.cs==actual->cs && p.mosi==actual->mosi
-       && p.sck==actual->sck && p.miso==actual->miso;
-    return true;
+  uint32_t maxSpeed;
+  std::vector<std::pair<char,uint32_t>> trials;
+  explicit MockMount(const sdautodetect::Pins* a, uint32_t maxHz = 4000000u)
+      : actual(a), maxSpeed(maxHz) {}
+  bool tryMount(const sdautodetect::Pins& p, uint32_t hz) {
+    trials.emplace_back(p.label[0], hz);
+    return actual && actual->sck==p.sck && actual->mosi==p.mosi &&
+           actual->miso==p.miso && actual->cs==p.cs && hz<=maxSpeed;
   }
-  void select(bool active){
-    selected=active; command.clear();response.clear();
-  }
-  uint8_t transfer(uint8_t sent){
-    assert(prepared);++sends;
-    if(!connected || !selected) return 0xff;
-    if(!response.empty()){
-      uint8_t v=response.front();response.pop_front();return v;
-    }
-    if(command.empty() && sent!=0x40 && sent!=0x48)return 0xff;
-    command.push_back(sent);
-    if(command.size()==6){
-      if(command[0]==0x40 && command[5]==0x95)response.push_back(0x01);
-      if(command[0]==0x48 && command[5]==0x87){
-        if(type==1)response.push_back(0x05);
-        else {
-          response.push_back(0x01);
-          response.push_back(0x00);response.push_back(0x00);
-          response.push_back(type==2?0x02:0x01);response.push_back(0xaa);
-        }
-      }
-      command.clear();
-    }
-    return 0xff;
-  }
-  void finish(){ selected=false; prepared=false; }
 };
-
-int main(){
-  for(const auto& p:sdautodetect::kProfiles){
-    MockSpi io(&p);
-    auto* got=sdautodetect::detect(io);
-    assert(got && got->cs==p.cs && got->mosi==p.mosi && got->sck==p.sck && got->miso==p.miso);
-    assert(io.sends>0 && !io.prepared);
-    MockSpi old(&p,1);
-    got=sdautodetect::detect(old); assert(got && got->sck==p.sck);
-    MockSpi broken(&p,2);
-    assert(sdautodetect::detect(broken)==nullptr);
+int main() {
+  const auto* profiles=sdautodetect::kProfiles;
+  for (int i=0;i<3;++i) {
+    MockMount m(&profiles[i]);
+    uint32_t speed=0;
+    auto* found=sdautodetect::mount(m,speed);
+    assert(found==&profiles[i]);
+    assert(speed==4000000u);
+    assert(m.trials.size()==static_cast<size_t>(3*i+1));
   }
-  MockSpi absent(nullptr);
-  assert(sdautodetect::detect(absent)==nullptr);
-  assert(absent.attempts==3);
-  puts("PASS: CMD0/CMD8 autodetection for A, B, Conta; legacy and missing card");
+  { // slow card must receive speed fallbacks
+    MockMount m(&profiles[2], 1000000u);
+    uint32_t speed=0;
+    auto* found=sdautodetect::mount(m,speed);
+    assert(found==&profiles[2] && speed==1000000u);
+    assert(m.trials.size()==9);
+  }
+  { // absent card never produces a false positive
+    MockMount m(nullptr);
+    uint32_t speed=123u;
+    assert(sdautodetect::mount(m,speed)==nullptr);
+    assert(speed==0 && m.trials.size()==9);
+  }
+  puts("PASS: A/B/C SD mount fallback, slower card, absent card");
 }

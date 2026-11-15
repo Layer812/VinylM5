@@ -60,7 +60,7 @@ StopWatch背面の6ピンEXT端子に、**3.3V動作**のmicroSD SPIカードリ
 
 StopWatch側の信号は、CS/SS=GPIO43、GPIO44・GPIO9・GPIO0が残るMOSI・SCK・MISOに対応します。起動時にSDカードの応答を確認してから適切な配列でSPI通信を開始するため、ボタンや画面での切替操作は不要です。
 
-GPIO0は起動ストラップ端子です。起動時に外部回路からLOWへ固定しないモジュールを使用してください。自動判別は弱駆動の低速信号で行いますが、任意の未対応モジュールに対する電気的な安全性を保証するものではありません。
+GPIO0は起動ストラップ端子です。起動時に外部回路からLOWへ固定しないモジュールを使用してください。3種類の既知の配列で順番にマウントを試し、成功した配列を採用します。失敗時にはSPIの使用を終了してから次の配列に切り替えます。記載のないモジュールや不正な接続では、信号競合を完全には防げません。
 
 microSDは**FAT32**を使用します。NTFS・exFATは読み込めません。多数のフォルダがある場合でも、前回選択したフォルダを優先して再生開始し、残りはバックグラウンドで読み込みます。
 
@@ -126,7 +126,7 @@ VinylM5 supports and **automatically detects** these three layouts (from 3.3V to
 
 The [Switch Science Conta microSD socket module, product 10770](https://www.switch-science.com/products/10770), uses Type C.
 
-The player probes card responses at low speed with weak open-drain signaling, then starts normal SPI only on the identified pins. No user selection is needed. GPIO0 is a boot-strapping pin and must not be held LOW by the reader at reset. Only the listed layouts are supported; this does not guarantee safety with arbitrary third-party hardware.
+The player tests the three listed SPI pin layouts and uses the first successful FAT32 mount, releasing the SPI pins after failed attempts. No user selection is needed. GPIO0 is a boot-strapping pin and must not be held LOW by the reader at reset. Only the listed layouts are supported; this does not guarantee safety with arbitrary third-party hardware.
 
 Use a **FAT32** microSD card (not NTFS or exFAT). Playback starts from the previous folder while the remaining directory catalog is loaded in the background.
 

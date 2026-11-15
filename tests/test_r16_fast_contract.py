@@ -26,10 +26,10 @@ assert 'cacheFS=LittleFS.begin(false)' in s and 'writeNvsCache();' in s
 assert 'scanDirectoryCatalog(uint8_t(i));' in s
 assert 'Neither branch writes to microSD' in s
 assert 'SD.format' not in s and 'SD.remove' not in s
-assert 'pinMode(detected->cs,OUTPUT)' in s and '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
+assert 'pinMode(43, OUTPUT)' in s and '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
 assert '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
-assert 'sdautodetect::detect(probe)' in s
-assert 'SD.begin(detected->cs,sdSPI,freq,"/sd",5,false)' in s
+assert 'sdautodetect::mount(bus,mountedHz)' in s
+assert 'SD.begin(pins.cs, sdSPI, hz, "/sd", 5, false)' in s
 assert 'SD.end();sdSPI.end();' in s
 assert 'cfg.internal_imu = false;' in m and 'cfg.internal_rtc = false;' in m
 assert 'M5Unified.git#0.2.25' in ini and 'M5GFX.git#0.2.33' in ini

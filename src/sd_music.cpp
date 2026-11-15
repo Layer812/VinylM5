@@ -108,73 +108,39 @@ static bool selectRearGpioRoute(){
  return ok;
 }
 
- class ProbeBus {
-   sdautodetect::Pins pins_{};
-      static gpio_num_t num(int pin){return static_cast<gpio_num_t>(pin);}
-   static void set(int pin,bool high){gpio_set_level(num(pin),high?1:0);}
-   static void pause(){delayMicroseconds(40);}
-   static bool input(int pin){
-     gpio_config_t c{};
-     c.pin_bit_mask=1ULL<<pin;
-     c.mode=GPIO_MODE_INPUT;
-     c.pull_up_en=GPIO_PULLUP_ENABLE;
-     c.pull_down_en=GPIO_PULLDOWN_DISABLE;
-     c.intr_type=GPIO_INTR_DISABLE;
-     return gpio_config(&c)==ESP_OK;
-   }
-   static bool openDrain(int pin){
-     set(pin,true);
-     gpio_config_t c{};
-     c.pin_bit_mask=1ULL<<pin;
-     c.mode=GPIO_MODE_INPUT_OUTPUT_OD;
-     c.pull_up_en=GPIO_PULLUP_ENABLE;
-     c.pull_down_en=GPIO_PULLDOWN_DISABLE;
-     c.intr_type=GPIO_INTR_DISABLE;
-     return gpio_config(&c)==ESP_OK
-         && gpio_set_drive_capability(num(pin),GPIO_DRIVE_CAP_0)==ESP_OK;
-   }
- public:
-   bool prepare(const sdautodetect::Pins& pins){
-     pins_=pins;
-     finish();
-     // Release all ambiguous pads before assigning tentative signal directions.
-     if(!openDrain(pins_.mosi) || !openDrain(pins_.sck)){
-       finish();return false;
-     }
-     if(!input(pins_.miso)){finish();return false;}
-     set(pins_.cs,true);
-     if(gpio_set_direction(num(pins_.cs),GPIO_MODE_OUTPUT)!=ESP_OK){
-       finish();return false;
-     }
-     set(pins_.sck,false); // SPI mode 0, idle clock low.
-     return true;
-   }
-   void select(bool active){
-     set(pins_.cs,!active);
-     pause();
-   }
-   uint8_t transfer(uint8_t data){
-     uint8_t in=0;
-     for(int bit=7;bit>=0;--bit){
-       set(pins_.sck,false);
-       set(pins_.mosi,(data&(1u<<bit))!=0);
-       pause();
-       set(pins_.sck,true); // Open drain: HIGH is released, not actively driven.
-       pause();
-       in=uint8_t((in<<1)|(gpio_get_level(num(pins_.miso))!=0));
-       set(pins_.sck,false);
-       pause();
-     }
-     return in;
-   }
-   void finish(){
-     // CS is also an input between trials, so an unrecognized card is deselected.
-     // External SD CS pull-up is expected on the reader; set HIGH before release.
-     set(43,true);
-     gpio_set_direction(GPIO_NUM_43,GPIO_MODE_OUTPUT);
-     constexpr int kPinsToRelease[]={0,9,44};
-     for(int pin : kPinsToRelease) input(pin);
-   }
+
+// Use the SD library's tested SPI initialization on the three fixed
+// manufacturer pinouts. No arbitrary GPIO combinations are probed.
+// Between failed trials, CS is HIGH, the SPI peripheral is shut down
+// and GPIO0/9/44 are released. Power and ground must match physically.
+class AutoMountBus {
+  static void releasePins() {
+    digitalWrite(43, HIGH);
+    pinMode(43, OUTPUT);
+    for (int pin : {0, 9, 44}) pinMode(pin, INPUT_PULLUP);
+  }
+public:
+  bool tryMount(const sdautodetect::Pins& pins, uint32_t hz) {
+    ++spiAttempts;
+    lastTriedHz = hz;
+    releasePins();
+    Serial.printf("VinylM5 SD AUTO: TRY profile=%s speed=%lu\n",
+                  pins.label, static_cast<unsigned long>(hz));
+    digitalWrite(43, HIGH);
+    pinMode(43, OUTPUT);
+    sdSPI.begin(pins.sck, pins.miso, pins.mosi, pins.cs);
+    delay(20);
+    if (SD.begin(pins.cs, sdSPI, hz, "/sd", 5, false)) {
+      return true;
+    }
+    // Deselect before changing which pad is the clock or card output.
+    digitalWrite(pins.cs, HIGH);
+    SD.end();
+    sdSPI.end();
+    releasePins();
+    vTaskDelay(pdMS_TO_TICKS(40));
+    return false;
+  }
 };
 
 const char* leaf(const char* n){
@@ -447,45 +413,24 @@ bool begin(){
    Serial.println("VinylM5 SD: MUX control unverified; SD access canceled");
    return false;
  }
- // First identify the pinout at low speed, with weak open-drain GPIO signals.
- // Never use the high-speed push-pull SPI peripheral on an unrecognized layout.
- ProbeBus probe;
- const sdautodetect::Pins* detected=sdautodetect::detect(probe);
+ // Try the three documented SPI layouts using the FAT32 mount path that
+ // already succeeded on StopWatch. The weak open-drain CMD0-only preflight
+ // could fail before any attempt reached the working SD driver.
+ AutoMountBus bus;
+ uint32_t mountedHz=0;
+ const sdautodetect::Pins* detected=sdautodetect::mount(bus,mountedHz);
  if(!detected){
-   Serial.println("VinylM5 SD AUTO: no SPI card response on A/B/C; check reader pins, contact, 3V3 and GND");
+   Serial.println("VinylM5 SD AUTO: A/B/C mount failed; check FAT32, pins, card contact, and 3V3/GND");
    return false;
  }
  detectedProfile=detected->label;
- Serial.printf("VinylM5 SD AUTO: profile=%s detected by CMD0/CMD8\n",detected->label);
- // Only after a confirmed SD response do we assign high-speed SPI outputs.
- // A failure to mount here means a card/FS issue, not a reason to drive
- // conflicting SCK/MISO wiring in another candidate profile.
- static constexpr uint32_t kSdFrequencies[]={4000000u,2000000u,1000000u};
- bool cardMounted=false;
- for(uint32_t freq:kSdFrequencies){
-   ++spiAttempts;
-   lastTriedHz=freq;
-   pinMode(detected->cs,OUTPUT);digitalWrite(detected->cs,HIGH);
-   sdSPI.begin(detected->sck,detected->miso,detected->mosi,detected->cs);
-   delay(15);
-   if(SD.begin(detected->cs,sdSPI,freq,"/sd",5,false)){
-     Serial.printf("VinylM5 SD: MOUNT OK profile=%s clock=%lu Hz capacity=%llu MiB\n",
-         detected->label,static_cast<unsigned long>(freq),
-         static_cast<unsigned long long>(SD.cardSize()/1048576ull));
-     cardMounted=spiMounted=true;
-     cardBytes=SD.cardSize();workingHz=freq;
-     sdPhase=SdPhase::MountedNoMusic;
-     break;
-   }
-   SD.end();sdSPI.end();
-   // SD driver has released the SPI peripheral; do not leave GPIO0 driven.
-   if(detected->sck==0)pinMode(0,INPUT_PULLUP);
-   vTaskDelay(pdMS_TO_TICKS(50));
- }
- if(!cardMounted){
-   Serial.println("VinylM5 SD: CARD REPLIED but FAT mount failed; check FAT32 and card health");
-   return false;
- }
+ workingHz=mountedHz;
+ spiMounted=true;
+ cardBytes=SD.cardSize();
+ sdPhase=SdPhase::MountedNoMusic;
+ Serial.printf("VinylM5 SD AUTO: MOUNT OK profile=%s clock=%lu Hz capacity=%llu MiB\n",
+   detected->label,static_cast<unsigned long>(mountedHz),
+   static_cast<unsigned long long>(cardBytes/1048576ull));
  // No new video or audio setup here: this is only the SD catalogue.
  folders=static_cast<Folder*>(heap_caps_calloc(kMaxFolders,sizeof(Folder),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
  tracks=static_cast<Track*>(heap_caps_calloc(kMaxTracks,sizeof(Track),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
