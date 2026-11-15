@@ -2,9 +2,13 @@
 
 VinylM5 R16で実機動作したmicroSD初期化・読み込み処理を、他のStopWatchアプリでも再利用できるよう整理した**独立サンプル**です。
 
+For the different Switch Science Conta 10770 pin layout, see the [dedicated VinylM5 variant](../../variants/conta10770/README.md).
+
 This **read-only standalone example** reproduces the rear EXT MUX control, two safe microSD SPI pin profiles, FAT32 mounting, and opening a music file. It is derived from the VinylM5 R16 SD implementation, for which the user confirmed music playback and faster startup on a real StopWatch.
 
 **サンプルの範囲：** SDマウント後、最大8階層・最大4,096項目を探索し、最初のMP3/FLACファイルの**先頭16バイト**をシリアル出力します。音楽のデコード・再生、R16のFlashキャッシュ・バックグラウンド索引は含みません。
+
+**別配列：** [スイッチサイエンス Conta microSD（製品10770）用のVinylM5ソース](../../variants/conta10770/README.md)も公開しています。ContaはこのサンプルのA/B配列とは異なり、専用ビルドを使用します。
 
 ## Pin mapping / ピン配置
 

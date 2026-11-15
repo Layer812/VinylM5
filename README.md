@@ -63,6 +63,13 @@ VinylM5 R16は、信号線の並びが異なる次の**2種類**を自動的に�
 
 **重要：** GPIO0はBOOT兼用です。microSD側のMISOが起動時にGPIO0をLOWへ固定するモジュールは使用しないでください。電源/GNDの誤配線はソフトウェアで修正できません。
 
+### Conta microSD（スイッチサイエンス製品10770）
+
+[Conta™ microSDカードソケット拡張用モジュール（ピンヘッダなし）](https://www.switch-science.com/products/10770)用には、[専用のVinylM5ソース・書き込み手順](variants/conta10770/README.md)を用意しています。
+
+この基板は `3V3 / SS / MOSI / MISO / SCK / GND` の並びです。StopWatchのGPIO43=SS、GPIO44=MOSI、GPIO9=MISO、GPIO0=SCKに接続します。**従来の2種類とはMISO/SCKの位置が異なるため、専用ビルドを使ってください。** 自動切替の対象には含めていません。GPIO0は起動後にSCKへ切り替えます。3.3VとGNDを必ず確認してください。
+
+
 microSDは**FAT32**で使用してください。NTFS・exFATには対応していません。実機では32GB FAT32カードでMP3/FLAC再生を確認しています。曲が多い場合も、R16は前回のフォルダを優先して再生開始し、残りのフォルダをバックグラウンドで読み込みます。microSD内の音楽ファイルを削除・変更・フォーマットすることはありません。
 
 ---
@@ -123,6 +130,11 @@ VinylM5 R16 supports **two specific signal orders**, from 3.3V toward GND:
 - **Type B:** `3V3 / CS / CLK / MOSI / MISO / GND`
 
 GPIO0 is a boot-strapping pin; a reader that holds MISO/GPIO0 LOW during boot may prevent startup. Only these two layouts are attempted; arbitrary pin probing is not used.
+
+#### Switch Science Conta microSD (product 10770)
+
+The [Conta™ microSD Card Socket Module, without pin headers](https://www.switch-science.com/products/10770) uses `3V3 / SS / MOSI / MISO / SCK / GND`. Use the [dedicated VinylM5 source and installation instructions](variants/conta10770/README.md): GPIO43=SS, GPIO44=MOSI, GPIO9=MISO, GPIO0=SCK. **Do not use the standard A/B firmware with this pinout.** GPIO0 is configured as SCK only after boot. Check 3.3V and ground before connecting.
+
 
 Use a **FAT32** microSD card (not NTFS or exFAT). MP3/FLAC playback was confirmed on a 32GB FAT32 card. R16 starts from the previous folder while indexing remaining folders in the background. The player does not format or modify files on the card.
 
