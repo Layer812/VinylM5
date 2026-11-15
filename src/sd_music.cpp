@@ -109,8 +109,8 @@ static bool selectRearGpioRoute(){
 }
 
 
-// Use the SD library's tested SPI initialization on the three fixed
-// manufacturer pinouts. No arbitrary GPIO combinations are probed.
+// Use the SD library's tested SPI initialization on the two supported
+// board pinouts (C then A). No arbitrary GPIO combinations are probed.
 // Between failed trials, CS is HIGH, the SPI peripheral is shut down
 // and GPIO0/9/44 are released. Power and ground must match physically.
 class AutoMountBus {
@@ -413,14 +413,14 @@ bool begin(){
    Serial.println("VinylM5 SD: MUX control unverified; SD access canceled");
    return false;
  }
- // Try the three documented SPI layouts using the FAT32 mount path that
+ // Try the C/A SPI layouts using the FAT32 mount path that
  // already succeeded on StopWatch. The weak open-drain CMD0-only preflight
  // could fail before any attempt reached the working SD driver.
  AutoMountBus bus;
  uint32_t mountedHz=0;
  const sdautodetect::Pins* detected=sdautodetect::mount(bus,mountedHz);
  if(!detected){
-   Serial.println("VinylM5 SD AUTO: A/B/C mount failed; check FAT32, pins, card contact, and 3V3/GND");
+   Serial.println("VinylM5 SD AUTO: C/A mount failed; check FAT32, pins, card contact, and 3V3/GND");
    return false;
  }
  detectedProfile=detected->label;

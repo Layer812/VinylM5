@@ -18,7 +18,7 @@ WebBurner：**更新申請中**（[従来の公開版](https://burner.m5stack.co
 
 ## microSD読み込みサンプル
 
-StopWatch背面のSPI接続例は[サンプルコード](examples/stopwatch-microsd-spi/README.md)で確認できます。VinylM5 R16本体はA・B・Conta 10770の**3種類の配列を自動判別**し、設定画面での選択は不要です。
+StopWatch背面のSPI接続例は[サンプルコード](examples/stopwatch-microsd-spi/README.md)で確認できます。VinylM5 R16本体はC型（Conta 10770）・A型の**2種類の配列をC→Aの順で自動判別**し、設定画面での選択は不要です。
 
 ## 操作方法
 
@@ -46,21 +46,20 @@ StopWatch背面の6ピンEXT端子に、**3.3V動作**のmicroSD SPIカードリ
 
 **電源を切ってから接続してください。** 電源端子の`3V3_L2`と`GND`の位置が一致するカードリーダーのみ使用できます。5Vモジュールや電源配列が異なる基板は直挿ししないでください。
 
-### 自動判別に対応する3種類のピン配列
+### 自動判別に対応する2種類のピン配列
 
 いずれも3.3V側からGND側への並びです。
 
 | 種類 | microSDリーダーのピン配列 |
 | --- | --- |
-| A | `3V3 / CS / MOSI / CLK / MISO / GND` |
-| B | `3V3 / CS / CLK / MOSI / MISO / GND` |
-| C | `3V3 / SS / MOSI / MISO / SCK / GND` |
+| C（先に試行） | `3V3 / SS / MOSI / MISO / SCK / GND` |
+| A（次に試行） | `3V3 / CS / MOSI / CLK / MISO / GND` |
 
 **C配列の製品例：** [スイッチサイエンス Conta microSDカードソケット拡張用モジュール（製品10770）](https://www.switch-science.com/products/10770)
 
 StopWatch側の信号は、CS/SS=GPIO43、GPIO44・GPIO9・GPIO0が残るMOSI・SCK・MISOに対応します。起動時にSDカードの応答を確認してから適切な配列でSPI通信を開始するため、ボタンや画面での切替操作は不要です。
 
-GPIO0は起動ストラップ端子です。起動時に外部回路からLOWへ固定しないモジュールを使用してください。3種類の既知の配列で順番にマウントを試し、成功した配列を採用します。失敗時にはSPIの使用を終了してから次の配列に切り替えます。記載のないモジュールや不正な接続では、信号競合を完全には防げません。
+GPIO0は起動ストラップ端子です。起動時に外部回路からLOWへ固定しないモジュールを使用してください。C型・A型の2配列をこの順番でマウント試行し、成功した配列を採用します。失敗時にはSPIの使用を終了してから次の配列に切り替えます。記載のないモジュールや不正な接続では、信号競合を完全には防げません。
 
 microSDは**FAT32**を使用します。NTFS・exFATは読み込めません。多数のフォルダがある場合でも、前回選択したフォルダを優先して再生開始し、残りはバックグラウンドで読み込みます。
 
@@ -93,7 +92,7 @@ Included sample track: **Neon Spinback** (Original).
 
 ### microSD SPI code example
 
-A [standalone SPI reader example](examples/stopwatch-microsd-spi/README.md) documents the StopWatch's rear connector. VinylM5 R16 itself automatically identifies all three supported reader layouts, including Conta 10770.
+A [standalone SPI reader example](examples/stopwatch-microsd-spi/README.md) documents the StopWatch's rear connector. VinylM5 R16 itself automatically identifies both supported reader layouts (Type C first, then Type A).
 
 ### Controls
 
@@ -116,17 +115,16 @@ The center label displays ID3 track information and embedded cover art. When no 
 
 Connect a **3.3V microSD SPI reader** to the StopWatch's rear 6-pin EXT connector while the power is off. Match the physical `3V3_L2` and `GND` positions. Do not directly attach readers with different power pins or a 5V supply.
 
-VinylM5 supports and **automatically detects** these three layouts (from 3.3V to GND):
+VinylM5 supports and **automatically detects** these two layouts (from 3.3V to GND):
 
 | Type | Reader pins |
 | --- | --- |
-| A | `3V3 / CS / MOSI / CLK / MISO / GND` |
-| B | `3V3 / CS / CLK / MOSI / MISO / GND` |
-| C | `3V3 / SS / MOSI / MISO / SCK / GND` |
+| C (first) | `3V3 / SS / MOSI / MISO / SCK / GND` |
+| A (second) | `3V3 / CS / MOSI / CLK / MISO / GND` |
 
 The [Switch Science Conta microSD socket module, product 10770](https://www.switch-science.com/products/10770), uses Type C.
 
-The player tests the three listed SPI pin layouts and uses the first successful FAT32 mount, releasing the SPI pins after failed attempts. No user selection is needed. GPIO0 is a boot-strapping pin and must not be held LOW by the reader at reset. Only the listed layouts are supported; this does not guarantee safety with arbitrary third-party hardware.
+The player tests the two listed SPI pin layouts (C then A) and uses the first successful FAT32 mount, releasing the SPI pins after failed attempts. No user selection is needed. GPIO0 is a boot-strapping pin and must not be held LOW by the reader at reset. Only the listed layouts are supported; this does not guarantee safety with arbitrary third-party hardware.
 
 Use a **FAT32** microSD card (not NTFS or exFAT). Playback starts from the previous folder while the remaining directory catalog is loaded in the background.
 

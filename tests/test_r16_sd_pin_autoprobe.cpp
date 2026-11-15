@@ -18,7 +18,7 @@ struct MockMount {
 };
 int main() {
   const auto* profiles=sdautodetect::kProfiles;
-  for (int i=0;i<3;++i) {
+  for (int i=0;i<2;++i) {
     MockMount m(&profiles[i]);
     uint32_t speed=0;
     auto* found=sdautodetect::mount(m,speed);
@@ -27,17 +27,17 @@ int main() {
     assert(m.trials.size()==static_cast<size_t>(3*i+1));
   }
   { // slow card must receive speed fallbacks
-    MockMount m(&profiles[2], 1000000u);
+    MockMount m(&profiles[1], 1000000u);
     uint32_t speed=0;
     auto* found=sdautodetect::mount(m,speed);
-    assert(found==&profiles[2] && speed==1000000u);
-    assert(m.trials.size()==9);
+    assert(found==&profiles[1] && speed==1000000u);
+    assert(m.trials.size()==6);
   }
   { // absent card never produces a false positive
     MockMount m(nullptr);
     uint32_t speed=123u;
     assert(sdautodetect::mount(m,speed)==nullptr);
-    assert(speed==0 && m.trials.size()==9);
+    assert(speed==0 && m.trials.size()==6);
   }
-  puts("PASS: A/B/C SD mount fallback, slower card, absent card");
+  puts("PASS: C/A SD mount fallback, slower card, absent card");
 }

@@ -2,8 +2,10 @@ from pathlib import Path
 p=Path(__file__).resolve().parents[1]
 s=(p/'src/sd_music.cpp').read_text()
 h=(p/'include/sd_spi_autodetect.hpp').read_text()
-for pins in ('{43, 44, 9, 0,', '{43, 9, 44, 0,', '{43, 44, 0, 9,'):
+for pins in ('{43, 44, 0, 9,', '{43, 44, 9, 0,'):
     assert pins in h
+assert h.index('{43, 44, 0, 9,') < h.index('{43, 44, 9, 0,')
+assert '{43, 9, 44, 0,' not in h
 assert 'sdautodetect::mount(bus,mountedHz)' in s
 assert 'SD.begin(pins.cs, sdSPI, hz, "/sd", 5, false)' in s
 assert '++spiAttempts;' in s
@@ -15,4 +17,4 @@ assert 'if(!detected)' in s
 assert '-DVINYLM5_SD_CONTA10770=1' not in (p/'platformio.ini').read_text()
 assert 'SD.format' not in s and 'SD.remove' not in s
 assert 'GPIO_MODE_INPUT_OUTPUT_OD' not in s
-print('PASS: three known SPI mount profiles, bounded fallback, pin release on failure')
+print('PASS: C/A-only SPI mount profiles, bounded fallback, pin release on failure')
