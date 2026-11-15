@@ -26,8 +26,10 @@ assert 'cacheFS=LittleFS.begin(false)' in s and 'writeNvsCache();' in s
 assert 'scanDirectoryCatalog(uint8_t(i));' in s
 assert 'Neither branch writes to microSD' in s
 assert 'SD.format' not in s and 'SD.remove' not in s
-assert 'pinMode(43, OUTPUT)' in s and '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
-assert '{43, 44, 9, 0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
+assert 'pinMode(43, OUTPUT)' in s
+assert '{43,44,0,9,' in (p/'include/sd_spi_autodetect.hpp').read_text()
+assert '{43,9,44,0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
+assert '{43,44,9,0,' in (p/'include/sd_spi_autodetect.hpp').read_text()
 assert 'sdautodetect::mount(bus,mountedHz,mode)' in s
 assert 'SD.begin(pins.cs, sdSPI, hz, "/sd", 5, false)' in s
 assert 'SD.end();sdSPI.end();' in s
