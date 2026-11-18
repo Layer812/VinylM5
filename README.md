@@ -4,16 +4,15 @@
 
 ![VinylM5](vin.gif)
 
-M5Stack StopWatch用のレコード風MP3プレイヤーです。  
-円形ディスプレイに回転するレコードを表示し、MP3を再生します。
+M5Stack StopWatch用のレコード風音楽プレイヤーです。  
+円形ディスプレイに回転するレコードを表示し、MP3・FLAC・VGM/VGZ・MDXを再生できます。
 
 **動作風景：** [Xで実機の動作動画を見る](https://x.com/layer812/status/2118882192084607121)
 
 ## インストール
 
-M5Burner シェアコード：`F6iadcUkHAM3gnQv`  
-WebBurner：[最新版をブラウザから書き込む](https://burner.m5stack.com/LRW3MJ)  
-**2026年11月15日：StopWatch実機でmicroSD再生動作を確認済み。**
+**WebBurner：** [VinylM5をブラウザからインストール](https://burner.m5stack.com/CD8PA3)  
+**2026年11月18日：StopWatch実機でVGMとMDXの再生を確認済み。**
 
 収録サンプル曲：**Neon Spinback**（Original）
 
@@ -34,7 +33,9 @@ StopWatch背面のSPI接続例は[サンプルコード](examples/stopwatch-micr
 | 中央ラベルの下側をタップ | 音量ダウン |
 | 中央の軸部分を長押し | USBドライブモード |
 
-USBドライブモードでMP3を転送できます。PCでのコピー後は、安全に取り出してから再生に戻してください。
+USBドライブモードで音楽ファイルを転送できます。PCでのコピー後は、安全に取り出してから再生に戻してください。
+
+**対応フォーマット：** MP3、FLAC、VGM、VGZ、MDX（PDX伴奏データの読み込みに対応）。MDXでPDXを使う場合は同じフォルダに配置してください。
 
 ラベルにはID3の曲名・アーティスト名・ジャケット画像を使用します。埋め込み画像がない場合は、同じフォルダで最初に見つかったPNG画像を使用します。日本語の曲名にも対応しています。
 
@@ -66,29 +67,24 @@ microSDは**FAT32**を使用します。NTFS・exFATは読み込めません。�
 
 ### ソースからインストール（Windows / PlatformIO）
 
-統合版のソースを取得し、シリアルモニターを閉じてから次のAPP-ONLYスクリプトを実行してください。
+GitHubに掲載されているソースから開発する場合は、`platformio.ini` の設定と対象機種を確認してください。公開済みソースとWebBurner版の更新時期が異なる場合があります。
 
-```bat
-call "RUN_VINYLM5_R16_SD_AUTO_APP_ONLY_COM13.cmd"
-```
-
-別のCOMポートを使う場合は末尾に `COM14` などを指定できます。起動APP領域を確認してからアプリケーションのみ書き込み、ブートローダー、パーティション表、音楽データは消去しません。
+既存の書き込みスクリプトはAPP領域を確認してアプリケーションのみを書き込みます。ブートローダー、パーティション表、保存済み音楽データを消去しない運用を推奨します。
 
 
 ---
 
 ## English
 
-VinylM5 is a vinyl-style MP3 player for the **M5Stack StopWatch**.  
-It plays MP3 files while displaying a spinning vinyl record and track label on the round screen.
+VinylM5 is a vinyl-style music player for the **M5Stack StopWatch**.  
+It plays MP3, FLAC, VGM/VGZ, and MDX files while displaying a spinning vinyl record and track label on the round screen.
 
 **Demo video:** [Watch VinylM5 running on real hardware on X](https://x.com/layer812/status/2118882192084607121)
 
 ### Installation
 
-**M5Burner share code:** `F6iadcUkHAM3gnQv`  
-**WebBurner:** [Install the latest release](https://burner.m5stack.com/LRW3MJ)  
-**Verified on a physical StopWatch with microSD playback (November 15, 2026).**
+**WebBurner:** [Install VinylM5 in your browser](https://burner.m5stack.com/CD8PA3)  
+**VGM and MDX playback verified on a physical StopWatch (November 18, 2026).**
 
 Included sample track: **Neon Spinback** (Original).
 
@@ -109,7 +105,9 @@ A [standalone SPI reader example](examples/stopwatch-microsd-spi/README.md) docu
 | Tap lower half of center label | Volume down |
 | Long-press the center spindle | USB drive mode |
 
-Copy MP3 files using USB drive mode, then safely eject the drive on your PC before returning to playback.
+Copy music files using USB drive mode, then safely eject the drive on your PC before returning to playback.
+
+**Supported formats:** MP3, FLAC, VGM, VGZ, and MDX (with PDX companion data support). Place a required PDX file in the same directory as its MDX file.
 
 The center label displays ID3 track information and embedded cover art. When no embedded artwork is available, the first PNG image found in the same folder is used. Japanese track titles are supported.
 
@@ -131,7 +129,7 @@ Normal boot probes **C only**. Hold **blue/right (BtnB)** at boot to switch to *
 
 Use a **FAT32** microSD card (not NTFS or exFAT). Playback starts from the previous folder while the remaining directory catalog is loaded in the background.
 
-For a source installation, close the serial monitor and run `RUN_VINYLM5_R16_SD_AUTO_APP_ONLY_COM13.cmd` on Windows (append a COM port name when needed). The script verifies the current boot application and writes only the APP partition.
+For source development, check `platformio.ini` and verify that the source version matches your target hardware. The public source snapshot may differ from the current WebBurner build. Use the supplied APP-only flashing procedure to protect the existing bootloader, partition table and music storage.
 
 
 ---
